@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <script>
+    window.MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']] }, startup: { typeset: false } };
+  </script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  <style>
+    /* PALETA PRETO E DOURADO PREMIUM */
+    :root {
+      --bg-color: #f9f9f9; --card-bg: #ffffff; --text-main: #111827; --text-muted: #6b7280;
+      --black-primary: #111827; --gold-primary: #d4af37; --gold-hover: #b8962c;
+      --gold-light: #fef08a; --gray-border: #e5e7eb; --red-error: #ef4444;
+    }
+
+    body { font-family: 'Inter', sans-serif; background-color: var(--bg-color); color: var(--text-main); margin: 0; padding: 20px; line-height: 1.6; }
+    .container { max-width: 1000px; margin: 0 auto; background: var(--card-bg); padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); border-top: 5px solid var(--black-primary); }
+    
+    h2 { color: var(--black-primary); margin-top: 0; font-weight: 700; border-bottom: 2px solid var(--gray-border); padding-bottom: 10px; }
+    h3 { color: var(--gold-primary); font-weight: 700; }
+    p { font-size: 14px; color: var(--text-muted); margin-bottom: 20px; }
+    
+    .nav-tabs { display: flex; flex-wrap: wrap; border-bottom: 2px solid var(--gray-border); margin-bottom: 25px; gap: 10px; }
+    .nav-tab { padding: 10px 15px; cursor: pointer; font-weight: 600; color: #9ca3af; border-bottom: 3px solid transparent; transition: 0.3s; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;}
+    .nav-tab:hover { color: var(--black-primary); }
+    .nav-tab.active { color: var(--black-primary); border-bottom-color: var(--gold-primary); }
+    
+    .tab-content { display: none; animation: fadeIn 0.4s; }
+    .tab-content.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    
+    .input-padrao { width: 100%; padding: 12px; border: 1px solid var(--gray-border); border-radius: 6px; font-family: inherit; font-size: 14px; box-sizing: border-box; margin-bottom: 10px; background: #fafafa; transition: 0.3s; color: var(--black-primary); }
+    .input-padrao:focus { outline: none; border-color: var(--gold-primary); box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2); }
+    
+    /* Construtor */
+    .criterio-box { background: #f3f4f6; border-left: 4px solid var(--black-primary); padding: 15px; margin-top: 15px; border-radius: 6px; }
+    .subcriterio-box { background: var(--card-bg); border-left: 3px solid var(--gold-primary); padding: 15px; margin-top: 10px; margin-left: 20px; border-radius: 6px; border: 1px solid var(--gray-border); display: flex; flex-wrap: wrap; align-items: center; gap: 10px;}
+    .subcriterio-box .input-padrao { flex: 2; margin-bottom: 0; }
+    .subcriterio-box .sub-peso { flex: 1; margin-bottom: 0; }
+    .escala-box { background: #fafafa; padding: 10px; margin-top: 8px; border-radius: 4px; display: flex; gap: 10px; align-items: center; border: 1px dashed var(--gray-border); }
+    
+    /* ESTILOS DO SLIDER AHP */
+    .comparacao-row { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; padding: 20px; background: #fafafa; border: 2px solid var(--gray-border); border-radius: 12px; transition: 0.3s; }
+    .crit-label { font-weight: 700; font-size: 14px; text-align: center; color: var(--black-primary); flex: 1;}
+    .slider-container { display: flex; align-items: center; width: 100%; gap: 15px; }
+    
+    input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
+    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 24px; width: 24px; border-radius: 50%; background: var(--gold-primary); cursor: pointer; margin-top: -10px; border: 3px solid var(--black-primary); transition: 0.2s; }
+    input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.1); }
+    input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 6px; cursor: pointer; background: var(--gray-border); border-radius: 3px; }
+    input[type=range]:focus { outline: none; }
+    
+    /* Botões */
+    button { cursor: pointer; font-family: 'Inter', sans-serif; font-weight: 700; border-radius: 6px; border: none; transition: 0.3s; text-transform: uppercase; font-size: 13px; letter-spacing: 0.5px;}
+    .btn-add { background: #e5e7eb; color: var(--black-primary); padding: 10px 15px; margin-top: 5px; }
+    .btn-add:hover { background: var(--gold-primary); color: #fff; }
+    .btn-remover { background: #fee2e2; color: var(--red-error); padding: 8px 12px; }
+    .btn-salvar { background: var(--gold-primary); color: var(--black-primary); padding: 15px 24px; font-size: 15px; width: 100%; margin-top: 30px; box-shadow: 0 4px 6px rgba(212, 175, 55, 0.3); }
+    .btn-salvar:hover { background: var(--black-primary); color: var(--gold-primary); }
+    .btn-editar { background: #dbeafe; color: #1e3a8a; padding: 6px 10px; font-size: 11px; }
+    
+    #toast { visibility: hidden; min-width: 250px; background-color: var(--black-primary); color: var(--gold-primary); text-align: center; border-radius: 6px; padding: 16px; position: fixed; z-index: 1000; top: 20px; right: 50%; transform: translateX(50%); font-weight: 600; opacity: 0; transition: 0.3s; box-shadow: 0 10px 15px rgba(0,0,0,0.2); border: 1px solid var(--gold-primary); }
+    #toast.show { visibility: visible; opacity: 1; }
+
+    table { width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 15px; border-radius: 8px; border: 1px solid var(--gray-border); overflow: hidden; }
+    th, td { padding: 14px 12px; text-align: left; border-bottom: 1px solid var(--gray-border); font-size: 13px; }
+    th { background: var(--black-primary); color: var(--gold-primary); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+    tr:nth-child(even) td { background: #f9fafb; }
+
+    .charts-container { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 20px; margin-bottom: 30px; }
+    .chart-box { background: #fff; border: 1px solid var(--gray-border); border-radius: 8px; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+    
+    .math-section { background: #fff; border: 1px solid var(--gray-border); padding: 25px; border-radius: 8px; margin-bottom: 20px; border-top: 3px solid var(--black-primary); }
+    .math-section h4 { color: var(--black-primary); font-size: 16px; border-bottom: 1px dashed var(--gray-border); padding-bottom: 8px; }
+    .math-box { background: #f9fafb; border-left: 4px solid var(--gold-primary); padding: 15px; border-radius: 0 8px 8px 0; margin: 15px 0; font-size: 16px; text-align: center; overflow-x: auto;}
+
+    .dashboard-panel { display: flex; gap: 20px; margin-bottom: 25px; flex-wrap: wrap;}
+    .cr-panel { background: #fafafa; padding: 20px; border-radius: 8px; border: 1px solid var(--gray-border); flex: 1; min-width: 250px;}
+    .cr-meter-container { background: #e5e7eb; border-radius: 8px; height: 12px; width: 100%; margin-top: 10px; overflow: hidden; position: relative; }
+    .cr-meter-fill { height: 100%; transition: width 0.8s ease-out, background-color 0.5s; }
+    .cr-marker { position: absolute; left: 10%; top: 0; bottom: 0; width: 3px; background: var(--black-primary); z-index: 2; }
+    .peso-tag { display: inline-block; background: var(--black-primary); color: var(--gold-primary); padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; margin: 5px 5px 0 0; }
+
+    .didactic-highlight { background: #fef08a; padding: 15px; border-radius: 8px; border-left: 5px solid #d4af37; font-size: 14.5px; color: #374151; margin-bottom: 20px;}
+  </style>
+</head>
+<body onload="iniciarApp()">
+
+<div id="toast"></div>
+
+<div class="container">
+  <div class="nav-tabs">
+    <div class="nav-tab active" onclick="mudarAba('construtor')">1. Gerir Modelos</div>
+    <div class="nav-tab" onclick="mudarAba('avaliacao')">2. Ficha de Avaliação</div>
+    <div class="nav-tab" onclick="mudarAba('setup')">3. Setup de Leilão (Matriz)</div>
+    <div class="nav-tab" onclick="mudarAba('metodologia')">4. Metodologia AHP</div>
+  </div>
+
+  <div id="construtor" class="tab-content active">
+    <h2>⚙️ Gestão e Construtor de Modelos</h2>
+    <div style="background: var(--black-primary); padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+      <label style="color: var(--gold-primary); font-weight: 600; font-size: 13px; display: block; margin-bottom: 5px;">Ação:</label>
+      <select id="selectAcaoConstrutor" class="input-padrao" style="margin-bottom: 0;" onchange="carregarModeloParaEdicao()">
+        <option value="">✨ Criar Novo Modelo do Zero</option>
+      </select>
+    </div>
+    <input type="text" id="nomeModelo" class="input-padrao" placeholder="Nome do Modelo (Ex: Fornecedores BESS LRCAP)" style="font-weight: 600;">
+    <div id="arvoreModelo"></div>
+    <button class="btn-add" style="background: var(--black-primary); color: var(--gold-primary); width: 100%; margin-top: 20px;" onclick="adicionarCriterio()">+ Adicionar Pilar Principal</button>
+    <button class="btn-salvar" onclick="salvarModeloAHP()">💾 Guardar Estrutura no Sistema</button>
+    <button id="btnExcluirModelo" class="btn-remover" style="display:none; width: 100%; margin-top: 15px; padding: 15px; font-size: 14px;" onclick="excluirModeloAHP()">🗑️ Excluir Este Modelo Permanentemente</button>
+  </div>
+
+  <div id="avaliacao" class="tab-content">
+    <h2>📋 Base de Avaliações</h2>
+    <select id="selectModeloAvaliacao" class="input-padrao" onchange="carregarFormularioAvaliacao()">
+      <option value="">-- Selecione o Modelo --</option>
+    </select>
+    
+    <div id="painelAvaliadas" style="display: none; margin-top: 20px; margin-bottom: 30px;">
+      <h3>Empresas já avaliadas neste modelo:</h3>
+      <div style="overflow-x: auto;">
+        <table>
+          <thead><tr><th>Nome da Empresa</th><th>Ações (Gerir Dados)</th></tr></thead>
+          <tbody id="tabelaAvaliadasBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="formAvaliacaoDinamico" style="display: none; padding: 20px; background: #fafafa; border: 1px solid var(--gray-border); border-radius: 8px;">
+      <h3 style="margin-top: 0; color: var(--black-primary);">Adicionar ou Editar Avaliação</h3>
+      <input type="text" id="nomeEmpresa" class="input-padrao" placeholder="Nome da Empresa (Ex: Tesla)" style="border-left: 4px solid var(--gold-primary);">
+      <div id="camposDinamicos"></div>
+      <button class="btn-salvar" onclick="salvarFormularioAvaliacao()">Gravar Notas na Base de Dados</button>
+    </div>
+  </div>
+
+  <div id="setup" class="tab-content">
+    <h2>⚖️ Setup de Leilão (Priorização)</h2>
+    <select id="selectModeloDecisao" class="input-padrao" onchange="gerarMatrizSaaty()">
+      <option value="">-- Selecione o Modelo para gerar o Ranking --</option>
+    </select>
+    
+    <div id="matrizDinamica" style="display: none; margin-top: 20px;">
+      <p style="font-weight: 600;">Deslize a barra para o lado do critério que for mais importante no seu cenário:</p>
+      <div id="ahpComparacoes"></div>
+      <button class="btn-salvar" onclick="processarAHP()">Processar Algoritmo e Gerar Gráficos</button>
+    </div>
+
+    <div id="resultados" style="display: none; margin-top: 40px; padding-top: 20px; border-top: 2px dashed var(--gray-border);">
+      <div class="dashboard-panel">
+        <div class="cr-panel">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-weight: 700; font-size: 14px; color: var(--black-primary);">Margem de Erro Lógico (CR)</span>
+            <span id="crText" style="font-weight: 800; font-size: 16px;">0%</span>
+          </div>
+          <div class="cr-meter-container"><div class="cr-marker" title="Limite de 10%"></div><div id="crFill" class="cr-meter-fill"></div></div>
+        </div>
+        <div class="cr-panel" style="border-left: 4px solid var(--gold-primary);">
+          <span style="font-weight: 700; font-size: 14px; color: var(--black-primary); display:block; margin-bottom: 8px;">Cenário (Pesos Extraídos do Slider):</span>
+          <div id="resumoPesosCenario"></div>
+        </div>
+      </div>
+      <div class="charts-container">
+        <div class="chart-box">
+          <h3 style="text-align: center; font-size: 14px; margin-top: 0; color: var(--black-primary);">Composição da Nota Final (Base 1000)</h3>
+          <div style="height: 300px;"><canvas id="rankingChart"></canvas></div>
+        </div>
+        <div class="chart-box">
+          <h3 style="text-align: center; font-size: 14px; margin-top: 0; color: var(--black-primary);">Impressão Digital (Desempenho 0-100%)</h3>
+          <div style="height: 300px;"><canvas id="radarChart"></canvas></div>
+        </div>
+      </div>
+      <div style="overflow-x: auto;">
+        <table>
+          <thead><tr><th>Posição</th><th>Avaliado</th><th>Score Final (0-1000 pts)</th></tr></thead>
+          <tbody id="tabelaRanking"></tbody>
+        </table>
+      </div>
+      <button class="btn-add" onclick="exportarCSV()" style="background: var(--black-primary); color: var(--gold-primary); width: 100%; margin-top: 15px; padding: 14px; font-size: 14px;">📥 Exportar Relatório Oficial (Excel/CSV)</button>
+    </div>
+  </div>
+
+  <div id="metodologia" class="tab-content">
+    <h2>Como funciona a "Mágica" Matemática?</h2>
+    
+    <div class="didactic-highlight">
+      <strong>💡 Imagine que está comprando um Sistema BESS (bateria):</strong><br>
+      A "Engenharia" diz-lhe que a bateria da Empresa A é melhor. A equipa de "Compras" diz que a Empresa B é mais barata. O departamento de "Obras" avisa que a Empresa C entrega mais rápido. <strong>Quem ganha?</strong><br><br>
+      É impossível somar "MWh" com "Prazo em Dias" e com "Dinheiro". O AHP (Analytic Hierarchy Process) resolve isto transformando sentimentos e prioridades (ex: "O Prazo é muito mais importante que a Eficiência neste projeto") em <strong>pesos matemáticos inquestionáveis</strong>.
+    </div>
+
+    <div class="math-section">
+      <h4>1. O Jogo das Comparações (A Matriz de Saaty)</h4>
+      <p>Em vez de pedirmos para adivinhar a percentagem de importância de cada área, o sistema usa as <strong>Barras Deslizantes</strong> da Aba 3 para lhe fazer perguntas fáceis, comparando os pilares <strong>dois a dois</strong>. O algoritmo constrói secretamente esta matriz ($A$):</p>
+      <div class="math-box">$$ A = \begin{bmatrix} 1 & a_{12} & a_{13} \\ 1/a_{12} & 1 & a_{23} \\ 1/a_{13} & 1/a_{23} & 1 \end{bmatrix} $$</div>
+      <p><em>Exemplo:</em> Se deslizar a barra dizendo que Engenharia é 5x mais importante que Obra ($a_{12} = 5$), o sistema preenche automaticamente que Obra tem apenas $1/5$ da importância da Engenharia ($1/a_{12} = 0.2$).</p>
+    </div>
+
+    <div class="math-section">
+      <h4>2. Descobrindo o Verdadeiro Peso (O Autovetor)</h4>
+      <p>O cérebro do sistema utiliza álgebra linear pura para encontrar o "DNA" desta matriz, conhecido como <strong>Autovetor Principal ($w$)</strong>. A beleza desta fórmula é que ela extrai as percentagens exatas que cada Pilar deve ter, garantindo que a soma deles seja sempre 100% (ou 1000 pontos no nosso caso).</p>
+      <div class="math-box">$$ A \cdot w = \lambda_{max} \cdot w $$</div>
+      <p>A matemática assume o controlo: Acabaram-se os palpites. Se o Autovetor ditar que a Engenharia leva 600 pontos, é isso que será usado no cálculo final.</p>
+    </div>
+
+    <div class="math-section">
+      <h4>3. O Teste do Polígrafo (Índice de Consistência - CR)</h4>
+      <p>Se disser ao sistema que prefere "Preço a Prazo", e "Prazo a Qualidade", mas depois disser que prefere "Qualidade a Preço"... você entrou em curto-circuito lógico! O AHP percebe isso através do Autovalor ($ \lambda_{max} $).</p>
+      <div class="math-box">$$ CR = \frac{\lambda_{max} - n}{n - 1} \times \frac{1}{RI} \times 100\% $$</div>
+      <p>Se o $CR$ for maior que 10%, a barra fica vermelha e o sistema recusa a sua lógica, obrigando-o a repensar as suas prioridades nas barras deslizantes.</p>
+    </div>
+    
+  </div>
+
+</div>
+
+<script>
+  let listaModelos = []; let modeloAtual = null; let critCounter = 0; let subCounter = 0;
+  let chartInstance = null; let radarInstance = null;
+  let cenarioPesosAtuais = []; let cenarioEstruturaAtual = [];
+  let listaAvaliadasAtual = []; // Cache das empresas para edição
+
+  function mostrarToast(msg, isSuccess = true) {
+    var toast = document.getElementById("toast");
+    toast.innerHTML = msg; toast.style.borderColor = isSuccess ? "var(--gold-primary)" : "var(--red-error)";
+    toast.style.color = isSuccess ? "var(--gold-primary)" : "#fca5a5";
+    toast.className = "show"; setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 4000);
+  }
+
+  function mudarAba(abaId) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
+    document.getElementById(abaId).classList.add('active');
+    document.querySelectorAll('.nav-tab').forEach(el => { if(el.getAttribute('onclick').includes(abaId)) el.classList.add('active'); });
+    if(abaId === 'metodologia' && window.MathJax) MathJax.typesetPromise();
+  }
+
+  function iniciarApp() {
+    google.script.run.withSuccessHandler(function(modelos) {
+      listaModelos = modelos;
+      let selAvaliacao = document.getElementById('selectModeloAvaliacao');
+      let selDecisao = document.getElementById('selectModeloDecisao');
+      let selConstrutor = document.getElementById('selectAcaoConstrutor');
+      
+      modelos.forEach(m => {
+        selAvaliacao.innerHTML += `<option value="${m.nome}">${m.nome}</option>`;
+        selDecisao.innerHTML += `<option value="${m.nome}">${m.nome}</option>`;
+        selConstrutor.innerHTML += `<option value="${m.nome}">✏️ Editar Modelo: ${m.nome}</option>`;
+      });
+    }).initDados();
+  }
+
+  // ================= CONSTRUTOR DINÂMICO =================
+  function carregarModeloParaEdicao() {
+    const nome = document.getElementById('selectAcaoConstrutor').value;
+    const inputNome = document.getElementById('nomeModelo');
+    const btnExcluir = document.getElementById('btnExcluirModelo');
+    const container = document.getElementById('arvoreModelo');
+    
+    container.innerHTML = ''; critCounter = 0; subCounter = 0;
+
+    if (!nome) {
+      inputNome.value = ''; inputNome.disabled = false; btnExcluir.style.display = 'none'; return;
+    }
+
+    inputNome.value = nome; inputNome.disabled = true; btnExcluir.style.display = 'block';
+    const modelo = listaModelos.find(m => m.nome === nome);
+    if (!modelo) return;
+
+    modelo.estrutura.forEach(pilar => {
+      critCounter++; const critId = 'crit_' + critCounter;
+      let html = `<div class="criterio-box" id="${critId}"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;"><span style="font-weight:700; color:var(--black-primary); text-transform:uppercase; font-size: 13px;">Pilar Principal</span><button class="btn-remover" onclick="this.parentElement.parentElement.remove()">X Remover Pilar</button></div><input type="text" class="input-padrao crit-nome" value="${pilar.pilar}" placeholder="Nome do Pilar"><div class="subcriterios-container">`;
+
+      pilar.subcriterios.forEach(sub => {
+        subCounter++; const subId = 'sub_' + subCounter;
+        html += `<div class="subcriterio-box" id="${subId}"><input type="text" class="input-padrao sub-nome" value="${sub.nome}" placeholder="Subcritério"><input type="number" class="input-padrao sub-peso" value="${sub.peso}" placeholder="Peso %" min="0" max="100" oninput="if(this.value > 100) this.value = 100; if(this.value < 0) this.value = 0;"><button class="btn-remover" onclick="this.parentElement.remove()">X</button><div class="escalas-wrapper">`;
+        sub.escalas.forEach(esc => {
+          html += `<div class="escala-box"><input type="text" class="esc-desc" value="${esc.descricao}" placeholder="Texto Escala"><input type="number" class="esc-desemp" value="${esc.peso}" placeholder="% Atend." min="0" max="100" oninput="if(this.value > 100) this.value = 100;"><button class="btn-remover" onclick="this.parentElement.remove()">X</button></div>`;
+        });
+        html += `</div><button class="btn-add" style="width:100%;" onclick="adicionarEscala('${subId}')">+ Escala</button></div>`;
+      });
+      html += `</div><button class="btn-add" onclick="adicionarSubcriterio('${critId}')">+ Subcritério</button></div>`;
+      container.insertAdjacentHTML('beforeend', html);
+    });
+  }
+
+  function adicionarCriterio() {
+    critCounter++;
+    const div = document.createElement('div'); div.className = 'criterio-box'; div.id = 'crit_' + critCounter;
+    div.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;"><span style="font-weight:700; color:var(--black-primary); text-transform:uppercase; font-size: 13px;">Pilar Principal</span><button class="btn-remover" onclick="this.parentElement.parentElement.remove()">X</button></div><input type="text" class="input-padrao crit-nome" placeholder="Nome do Pilar"><div class="subcriterios-container"></div><button class="btn-add" onclick="adicionarSubcriterio('crit_${critCounter}')">+ Subcritério</button>`;
+    document.getElementById('arvoreModelo').appendChild(div);
+  }
+
+  function adicionarSubcriterio(critId) {
+    subCounter++;
+    const div = document.createElement('div'); div.className = 'subcriterio-box'; div.id = 'sub_' + subCounter;
+    div.innerHTML = `<input type="text" class="input-padrao sub-nome" placeholder="Subcritério"><input type="number" class="input-padrao sub-peso" placeholder="Peso %" min="0" max="100" oninput="if(this.value > 100) this.value = 100; if(this.value < 0) this.value = 0;"><button class="btn-remover" onclick="this.parentElement.remove()">X</button><div class="escalas-wrapper"></div><button class="btn-add" style="width:100%;" onclick="adicionarEscala('sub_${subCounter}')">+ Escala</button>`;
+    document.querySelector('#' + critId + ' .subcriterios-container').appendChild(div);
+    adicionarEscala(div.id); adicionarEscala(div.id);
+  }
+
+  function adicionarEscala(subId) {
+    const div = document.createElement('div'); div.className = 'escala-box';
+    div.innerHTML = `<input type="text" class="esc-desc" placeholder="Texto Escala"><input type="number" class="esc-desemp" placeholder="% Atend." min="0" max="100" oninput="if(this.value > 100) this.value = 100;"><button class="btn-remover" style="padding: 10px;" onclick="this.parentElement.remove()">X</button>`;
+    document.querySelector('#' + subId + ' .escalas-wrapper').appendChild(div);
+  }
+
+  function salvarModeloAHP() {
+    const nome = document.getElementById('nomeModelo').value;
+    if (!nome.trim()) return mostrarToast("⚠️ Dê um nome ao modelo.", false);
+
+    const estrutura = []; let erroVazio = false;
+    document.querySelectorAll('.criterio-box').forEach(critDiv => {
+      const pilar = critDiv.querySelector('.crit-nome').value;
+      const subcriterios = []; const subNodes = critDiv.querySelectorAll('.subcriterio-box');
+      if(subNodes.length === 0) erroVazio = true;
+
+      subNodes.forEach(subDiv => {
+        const sub = subDiv.querySelector('.sub-nome').value;
+        const pesoSub = parseInt(subDiv.querySelector('.sub-peso').value || 0);
+        const escalas = []; const escNodes = subDiv.querySelectorAll('.escala-box');
+        if(escNodes.length === 0) erroVazio = true;
+
+        escNodes.forEach(escDiv => { escalas.push({ descricao: escDiv.querySelector('.esc-desc').value, peso: parseInt(escDiv.querySelector('.esc-desemp').value || 0) }); });
+        subcriterios.push({ nome: sub, peso: pesoSub, escalas: escalas });
+      });
+      estrutura.push({ pilar: pilar, subcriterios: subcriterios });
+    });
+
+    if(estrutura.length < 2 || erroVazio) return mostrarToast("⚠️ Complete a estrutura (Mín: 2 Pilares + Subcritérios).", false);
+
+    const btn = document.querySelector('#construtor .btn-salvar');
+    btn.innerHTML = "A guardar..."; btn.disabled = true;
+
+    google.script.run.withSuccessHandler(res => { 
+      mostrarToast("✅ " + res.sucesso, true); 
+      setTimeout(() => window.location.reload(), 1500); 
+    }).salvarModelo({ nome: nome.trim(), estrutura: estrutura });
+  }
+
+  function excluirModeloAHP() {
+    const nome = document.getElementById('nomeModelo').value;
+    if(!nome) return;
+    if(confirm(`ATENÇÃO: Deseja eliminar o modelo '${nome}' e todos os dados?`)) {
+      document.getElementById('btnExcluirModelo').innerHTML = "A excluir..."; document.getElementById('btnExcluirModelo').disabled = true;
+      google.script.run.withSuccessHandler(res => { mostrarToast("✅ " + res.sucesso); setTimeout(() => window.location.reload(), 1500); }).excluirModeloDatabase(nome);
+    }
+  }
+
+  // ================= AVALIAÇÃO E CRUD DE EMPRESAS =================
+  function carregarFormularioAvaliacao() {
+    const nome = document.getElementById('selectModeloAvaliacao').value;
+    const divForm = document.getElementById('formAvaliacaoDinamico');
+    const painelCRUD = document.getElementById('painelAvaliadas');
+    
+    if(!nome) { divForm.style.display = 'none'; painelCRUD.style.display = 'none'; return; }
+    
+    // Constrói o Formulário Dinâmico
+    modeloAtual = listaModelos.find(m => m.nome === nome);
+    const container = document.getElementById('camposDinamicos'); container.innerHTML = '';
+    modeloAtual.estrutura.forEach(pilar => {
+      container.innerHTML += `<h3 style="margin-top:25px; border-bottom: 1px solid var(--gray-border); padding-bottom:5px;">${pilar.pilar}</h3>`;
+      pilar.subcriterios.forEach(sub => {
+        let optionsHTML = `<option value="">-- Selecione --</option>`;
+        sub.escalas.forEach(esc => { optionsHTML += `<option value="${esc.peso}">${esc.descricao} (${esc.peso}%)</option>`; });
+        container.innerHTML += `<div class="form-group"><label style="font-weight:600;">${sub.nome} (${sub.peso}%):</label><select class="input-padrao nota-dinamica" data-pilar="${pilar.pilar}" data-sub="${sub.nome}">${optionsHTML}</select></div>`;
+      });
+    });
+    divForm.style.display = 'block';
+
+    // Busca as empresas já avaliadas neste modelo
+    painelCRUD.style.display = 'block';
+    atualizarTabelaCRUD(nome);
+  }
+
+  function atualizarTabelaCRUD(nomeModelo) {
+    const tbody = document.getElementById('tabelaAvaliadasBody');
+    tbody.innerHTML = '<tr><td colspan="2">A procurar dados na base...</td></tr>';
+    
+    google.script.run.withSuccessHandler(function(avaliacoes) {
+      listaAvaliadasAtual = avaliacoes;
+      tbody.innerHTML = '';
+      if(avaliacoes.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="2">Nenhuma empresa registada. Seja o primeiro a avaliar!</td></tr>';
+        return;
+      }
+      avaliacoes.forEach(av => {
+        tbody.innerHTML += `<tr>
+          <td style="font-weight:600;">${av.nome}</td>
+          <td>
+            <button class="btn-editar" onclick="editarEmpresa('${av.nome}')">✏️ Editar</button>
+            <button class="btn-remover" onclick="excluirEmpresa('${av.nome}')">🗑️ Remover</button>
+          </td>
+        </tr>`;
+      });
+    }).getAvaliacoes(nomeModelo);
+  }
+
+  function editarEmpresa(nomeEmpresa) {
+    const emp = listaAvaliadasAtual.find(e => e.nome === nomeEmpresa);
+    if(!emp) return;
+    
+    document.getElementById('nomeEmpresa').value = emp.nome;
+    document.querySelectorAll('.nota-dinamica').forEach(sel => {
+      const p = sel.getAttribute('data-pilar');
+      const s = sel.getAttribute('data-sub');
+      if(emp.notas[p] && emp.notas[p][s] !== undefined) {
+        sel.value = emp.notas[p][s];
+      }
+    });
+    
+    document.getElementById('nomeEmpresa').focus();
+    mostrarToast(`A editar ficha de: ${nomeEmpresa}. Guarde as alterações em baixo.`, true);
+  }
+
+  function excluirEmpresa(nomeEmpresa) {
+    if(!confirm(`Remover definitivamente os dados da empresa ${nomeEmpresa}?`)) return;
+    google.script.run.withSuccessHandler(res => {
+      mostrarToast(res.sucesso, true);
+      atualizarTabelaCRUD(modeloAtual.nome);
+    }).excluirAvaliacao(modeloAtual.nome, nomeEmpresa);
+  }
+
+  function salvarFormularioAvaliacao() {
+    const nomeEmpresa = document.getElementById('nomeEmpresa').value;
+    if(!nomeEmpresa) return mostrarToast("⚠️ Digite o nome da empresa.", false);
+
+    const notas = {}; let erro = false;
+    document.querySelectorAll('.nota-dinamica').forEach(sel => {
+      if(sel.value === "") erro = true; 
+      else {
+        const pilar = sel.getAttribute('data-pilar'); const sub = sel.getAttribute('data-sub');
+        if(!notas[pilar]) notas[pilar] = {}; notas[pilar][sub] = parseInt(sel.value);
+      }
+    });
+
+    if(erro) return mostrarToast("⚠️ Preencha todos os dropdowns de desempenho.", false);
+
+    const btn = document.querySelector('#formAvaliacaoDinamico .btn-salvar');
+    btn.innerHTML = "A gravar..."; btn.disabled = true;
+
+    google.script.run.withSuccessHandler(res => {
+      if(res.erro) { mostrarToast("⚠️ " + res.erro, false); }
+      else { 
+        mostrarToast("✅ " + res.sucesso, true); 
+        document.getElementById('nomeEmpresa').value = ''; 
+        document.querySelectorAll('.nota-dinamica').forEach(s => s.value = ''); 
+        atualizarTabelaCRUD(modeloAtual.nome); // Atualiza a tabela na hora!
+      }
+      btn.innerHTML = "Gravar Notas na Base de Dados"; btn.disabled = false;
+    }).salvarAvaliacao(modeloAtual.nome, { nome: nomeEmpresa, notas: notas });
+  }
+
+  // ================= MATRIZ AHP (NOVO SLIDER) E GRÁFICOS =================
+  function gerarMatrizSaaty() {
+    const nome = document.getElementById('selectModeloDecisao').value;
+    if(!nome) { document.getElementById('matrizDinamica').style.display = 'none'; return; }
+    
+    modeloAtual = listaModelos.find(m => m.nome === nome);
+    const container = document.getElementById('ahpComparacoes');
+    container.innerHTML = '';
+    
+    for(let i=0; i<modeloAtual.estrutura.length; i++){
+      for(let j=i+1; j<modeloAtual.estrutura.length; j++){
+        container.innerHTML += `
+          <div class="comparacao-row" style="border-color: var(--gray-border);">
+            <div class="slider-container">
+              <span class="crit-label" style="text-align: right;">${modeloAtual.estrutura[i].pilar}</span>
+              <input type="range" class="comp-slider" min="-8" max="8" value="0" step="1" 
+                     data-crit1="${modeloAtual.estrutura[i].pilar}" data-crit2="${modeloAtual.estrutura[j].pilar}"
+                     oninput="atualizarLabelSlider(this)">
+              <span class="crit-label" style="text-align: left;">${modeloAtual.estrutura[j].pilar}</span>
+            </div>
+            <div class="slider-label" style="font-weight: 600; font-size: 13px; color: var(--text-muted); margin-top: 5px;">
+              Igual Importância (1)
+            </div>
+          </div>
+        `;
+      }
+    }
+    document.getElementById('matrizDinamica').style.display = 'block';
+  }
+
+  function atualizarLabelSlider(slider) {
+    let val = parseInt(slider.value);
+    let label = slider.parentElement.nextElementSibling;
+    let containerBox = slider.parentElement.parentElement;
+    let c1 = slider.getAttribute('data-crit1');
+    let c2 = slider.getAttribute('data-crit2');
+    
+    let absVal = Math.abs(val) + 1;
+
+    if (val === 0) {
+       label.innerText = "Igual Importância (1)";
+       label.style.color = "var(--text-muted)";
+       containerBox.style.borderColor = "var(--gray-border)";
+    } else if (val < 0) {
+       label.innerText = `Preferência: ${c1} é ${absVal}x mais importante`;
+       label.style.color = "var(--black-primary)";
+       containerBox.style.borderColor = "var(--black-primary)";
+    } else {
+       label.innerText = `Preferência: ${c2} é ${absVal}x mais importante`;
+       label.style.color = "var(--gold-primary)";
+       containerBox.style.borderColor = "var(--gold-primary)";
+    }
+  }
+
+  function processarAHP() {
+    // Transforma os valores de -8 a 8 do slider para a escala de Saaty (1/9 a 9)
+    const sliders = document.querySelectorAll('.comp-slider');
+    const valores = Array.from(sliders).map(s => {
+       let v = parseInt(s.value);
+       if (v === 0) return 1;
+       if (v < 0) return Math.abs(v) + 1; // Favorece esquerda
+       if (v > 0) return 1 / (v + 1);     // Favorece direita
+    });
+    
+    google.script.run.withSuccessHandler(res => {
+      if(res.erro) return mostrarToast("⚠️ " + res.erro, false);
+
+      document.getElementById('resultados').style.display = 'block';
+      let crValor = parseFloat(res.cr);
+      let crText = document.getElementById('crText');
+      let crFill = document.getElementById('crFill');
+      
+      crText.innerText = crValor.toFixed(2) + "%";
+      crFill.style.width = Math.min(crValor, 100) + "%";
+      
+      if(crValor <= 10) {
+        crFill.style.backgroundColor = 'var(--gold-primary)'; 
+        crText.style.color = 'var(--gold-primary)';
+        mostrarToast("✅ Lógica Perfeita! Gráficos gerados.", true);
+      } else {
+        crFill.style.backgroundColor = 'var(--red-error)'; 
+        crText.style.color = 'var(--red-error)';
+        mostrarToast("⚠️ Contradição detetada! Revise as barras deslizantes.", false);
+      }
+
+      cenarioPesosAtuais = res.pesos; cenarioEstruturaAtual = res.estrutura;
+      let divPesos = document.getElementById('resumoPesosCenario'); divPesos.innerHTML = '';
+      res.estrutura.forEach((p, i) => { divPesos.innerHTML += `<span class="peso-tag">${p.pilar}: ${(res.pesos[i]*100).toFixed(1)}%</span>`; });
+
+      var tbody = document.getElementById('tabelaRanking'); tbody.innerHTML = '';
+      res.ranking.forEach((item, index) => {
+        tbody.innerHTML += `<tr><td><strong>${index+1}º</strong></td><td style="font-weight:600;">${item.nome}</td><td><strong style="color:var(--gold-primary);">${item.nota}</strong></td></tr>`;
+      });
+
+      Chart.defaults.font.family = "'Inter', sans-serif";
+      Chart.defaults.color = '#6b7280';
+      const paletaBlackGold = ['#111827', '#d4af37', '#9ca3af', '#fcd34d', '#374151', '#fef08a'];
+
+      if(chartInstance) chartInstance.destroy();
+      const ctxBar = document.getElementById('rankingChart').getContext('2d');
+      const datasetsBar = res.estrutura.map((pilarObj, index) => {
+        return { label: pilarObj.pilar, data: res.ranking.map(r => parseFloat(r.pScores[index])), backgroundColor: paletaBlackGold[index % paletaBlackGold.length] };
+      });
+      chartInstance = new Chart(ctxBar, { type: 'bar', data: { labels: res.ranking.map(r => r.nome), datasets: datasetsBar }, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true, max: 1000 }, y: { stacked: true } }, plugins: { legend: { position: 'bottom' } } } });
+
+      if(radarInstance) radarInstance.destroy();
+      const ctxRadar = document.getElementById('radarChart').getContext('2d');
+      const top3 = res.ranking.slice(0, 3);
+      const radarColors = [{ border: '#d4af37', bg: 'rgba(212, 175, 55, 0.2)' }, { border: '#111827', bg: 'rgba(17, 24, 39, 0.1)' }, { border: '#9ca3af', bg: 'rgba(156, 163, 175, 0.2)' }];
+      const datasetsRadar = top3.map((ganhador, idx) => { return { label: ganhador.nome, data: ganhador.pScoresRadar, borderColor: radarColors[idx].border, backgroundColor: radarColors[idx].bg, borderWidth: 2, pointBackgroundColor: radarColors[idx].border }; });
+      radarInstance = new Chart(ctxRadar, { type: 'radar', data: { labels: res.estrutura.map(e => e.pilar), datasets: datasetsRadar }, options: { responsive: true, maintainAspectRatio: false, scales: { r: { min: 0, max: 10, ticks: { stepSize: 2 } } }, plugins: { legend: { position: 'bottom' } } } });
+      
+    }).calcularAHPGenerico(modeloAtual.nome, modeloAtual.estrutura, valores);
+  }
+
+  function exportarCSV() {
+    if (!modeloAtual || cenarioPesosAtuais.length === 0) return;
+    let csv = [];
+    csv.push(['"RELATÓRIO DE DECISÃO AHP (MCDA)"'].join(";"));
+    csv.push(['"Modelo Avaliado: ' + modeloAtual.nome + '"'].join(";"));
+    csv.push("");
+    csv.push(['"CENÁRIO - PESOS APLICADOS:"'].join(";"));
+    cenarioEstruturaAtual.forEach((pilarObj, idx) => { let pct = (cenarioPesosAtuais[idx] * 100).toFixed(1) + "%"; csv.push(['"' + pilarObj.pilar + '"', '"' + pct + '"'].join(";")); });
+    csv.push("");
+    csv.push(['"RESULTADO FINAL (RANKING):"'].join(";"));
+    let rows = document.querySelectorAll("#setup table tr");
+    for (let i = 0; i < rows.length; i++) {
+      let rowData = [], cols = rows[i].querySelectorAll("td, th");
+      for (let j = 0; j < cols.length; j++) { rowData.push('"' + cols[j].innerText.replace(/"/g, '""') + '"'); }
+      csv.push(rowData.join(";"));
+    }
+    let csvFile = new Blob(["\uFEFF" + csv.join("\n")], {type: "text/csv;charset=utf-8;"}); 
+    let downloadLink = document.createElement("a"); downloadLink.download = "Relatorio_AHP_" + modeloAtual.nome.replace(/\s+/g, "_") + ".csv";
+    downloadLink.href = window.URL.createObjectURL(csvFile); downloadLink.style.display = "none";
+    document.body.appendChild(downloadLink); downloadLink.click(); document.body.removeChild(downloadLink);
+    mostrarToast("✅ Relatório Excel exportado!", true);
+  }
+</script>
+
+</body>
+</html>

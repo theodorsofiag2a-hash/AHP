@@ -1,0 +1,96 @@
+@import "tailwindcss";
+
+:root {
+  --bg-base: #141414;
+  --bg-surface: #1c1c1c;
+  --bg-surface-alt: #242424;
+  --border-subtle: #333333;
+  --border-strong: #474747;
+
+  --text-primary: #f5f5f0;
+  --text-muted: #9a9a94;
+  --text-faint: #6b6b66;
+
+  --gold-300: #f0daa4;
+  --gold-400: #e8c76f;
+  --gold-500: #c9932f;
+  --gold-600: #b3822a;
+  --gold-700: #a9762c;
+  --gold-soft: #2a2416;
+
+  --success: #4ade80;
+  --success-soft: #16261c;
+  --danger: #f87171;
+  --danger-soft: #2a1817;
+
+  --focus-ring: #d3a24f;
+}
+
+@theme inline {
+  --color-bg-base: var(--bg-base);
+  --color-bg-surface: var(--bg-surface);
+  --color-bg-surface-alt: var(--bg-surface-alt);
+  --color-border-subtle: var(--border-subtle);
+  --color-border-strong: var(--border-strong);
+
+  --color-text-primary: var(--text-primary);
+  --color-text-muted: var(--text-muted);
+  --color-text-faint: var(--text-faint);
+
+  --color-gold-300: var(--gold-300);
+  --color-gold-400: var(--gold-400);
+  --color-gold-500: var(--gold-500);
+  --color-gold-600: var(--gold-600);
+  --color-gold-700: var(--gold-700);
+  --color-gold-soft: var(--gold-soft);
+
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+
+  --font-sans: var(--font-inter);
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
+
+::selection {
+  background: var(--gold-soft);
+  color: var(--gold-300);
+}
+
+* {
+  border-color: var(--border-subtle);
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.gold-gradient-text {
+  background: linear-gradient(135deg, var(--gold-400), var(--gold-700));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 9999px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
