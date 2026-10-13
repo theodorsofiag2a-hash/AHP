@@ -90,7 +90,7 @@ export default async function AlternativeEvaluationPage({
 
       {assembledPillars.length === 0 ? (
         <p className="text-sm text-text-muted">
-          Este modelo ainda não tem pilares/subcritérios configurados. Volte à aba Estrutura.
+          Este modelo ainda não tem pilares/subcritérios configurados. Contate a G2A para configurar a estrutura deste modelo.
         </p>
       ) : (
         <EvaluationForm

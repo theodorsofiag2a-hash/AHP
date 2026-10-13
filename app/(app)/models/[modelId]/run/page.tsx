@@ -45,7 +45,7 @@ export default async function ModelRunPage({
 
       {!pillars || pillars.length < 2 ? (
         <p className="text-sm text-text-muted">
-          Este modelo precisa de ao menos 2 pilares. Volte à aba Estrutura para configurar.
+          Este modelo precisa de ao menos 2 pilares. Contate a G2A para configurar a estrutura deste modelo.
         </p>
       ) : !alternativesCount ? (
         <p className="text-sm text-text-muted">
