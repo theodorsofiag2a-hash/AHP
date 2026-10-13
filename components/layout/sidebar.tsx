@@ -22,7 +22,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
       )}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-60 shrink-0 -translate-x-full flex-col gap-1 border-r border-border-subtle bg-bg-surface px-3 py-6 transition-transform duration-200 md:static md:translate-x-0",
+          "fixed inset-y-0 left-0 z-50 flex w-60 shrink-0 -translate-x-full flex-col gap-1 border-r border-border-subtle bg-bg-surface px-3 py-6 shadow-[4px_0_24px_-8px_rgba(0,0,0,0.5)] transition-transform duration-200 md:static md:translate-x-0",
           open && "translate-x-0"
         )}
       >

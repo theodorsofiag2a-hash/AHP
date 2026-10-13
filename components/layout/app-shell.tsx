@@ -27,7 +27,7 @@ export function AppShell({
           userEmail={userEmail}
           onMenuClick={() => setSidebarOpen(true)}
         />
-        <main className="flex-1 overflow-y-auto bg-bg-base px-4 py-8 md:px-6">
+        <main className="bg-ambient-subtle flex-1 overflow-y-auto bg-bg-base px-4 py-8 md:px-6">
           <div className="mx-auto w-full max-w-7xl">{children}</div>
         </main>
       </div>

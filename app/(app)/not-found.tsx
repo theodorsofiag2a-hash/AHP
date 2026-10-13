@@ -8,7 +8,7 @@ export default function AppNotFound() {
     <div className="flex flex-1 items-center justify-center py-24">
       <Card className="max-w-sm">
         <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gold-soft text-gold-400">
+          <div className="icon-badge-gold h-12 w-12">
             <FileQuestion className="h-6 w-6" />
           </div>
           <CardTitle>Página não encontrada</CardTitle>

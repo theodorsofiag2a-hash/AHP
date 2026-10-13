@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 
 export default function Home() {
   return (
-    <div className="flex flex-1 flex-col">
+    <div className="bg-ambient flex flex-1 flex-col">
       <header className="flex items-center justify-between border-b border-border-subtle px-6 py-4 sm:px-10">
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gradient-to-br from-gold-400 to-gold-700 text-sm font-bold text-[#141414]">

@@ -40,7 +40,7 @@ export function Topbar({
   }, []);
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-border-subtle px-4 md:px-6">
+    <header className="relative z-10 flex h-16 items-center justify-between border-b border-border-subtle bg-bg-base px-4 shadow-[0_4px_16px_-8px_rgba(0,0,0,0.5)] md:px-6">
       <div className="flex items-center gap-2">
         <button
           type="button"

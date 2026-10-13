@@ -49,7 +49,7 @@ export default async function DashboardPage() {
         {kpis.map((kpi) => (
           <Card key={kpi.label}>
             <CardContent className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gold-soft text-gold-400">
+              <div className="icon-badge-gold h-10 w-10 shrink-0">
                 <kpi.icon className="h-5 w-5" />
               </div>
               <div>
@@ -78,7 +78,7 @@ export default async function DashboardPage() {
         {!models || models.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gold-soft text-gold-400">
+              <div className="icon-badge-gold h-12 w-12">
                 <Layers className="h-6 w-6" />
               </div>
               <CardTitle>Nenhum modelo ainda</CardTitle>
@@ -89,7 +89,7 @@ export default async function DashboardPage() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {models.map((model) => (
               <Link key={model.id} href={`/models/${model.id}/alternatives`}>
-                <Card className="h-full transition-colors hover:border-border-strong">
+                <Card className="h-full transition-all duration-200 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-[0_1px_0_0_rgba(255,255,255,0.05)_inset,0_16px_40px_-8px_rgba(0,0,0,0.65)]">
                   <CardContent className="flex items-center justify-between">
                     <div>
                       <p className="font-medium text-text-primary">{model.name}</p>

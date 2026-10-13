@@ -50,6 +50,9 @@
   --color-danger-soft: var(--danger-soft);
 
   --font-sans: var(--font-inter);
+
+  --shadow-glow-gold: 0 2px 12px -2px rgba(201, 147, 47, 0.25);
+  --shadow-glow-gold-lg: 0 4px 28px -4px rgba(201, 147, 47, 0.4);
 }
 
 html {
@@ -104,5 +107,39 @@ body {
   }
   .text-eyebrow-gold {
     @apply text-sm font-semibold uppercase tracking-wide text-gold-300;
+  }
+
+  /* Fundo decorativo: glow dourado vindo do topo + grid fina, para quebrar o vazio
+     chapado do tema dark. .bg-ambient é mais presente (landing/auth), .bg-ambient-subtle
+     é a versão discreta usada na área autenticada (mantém a tela "calma" para trabalho). */
+  .bg-ambient {
+    background-image:
+      radial-gradient(ellipse 70% 45% at 50% -10%, rgba(201, 147, 47, 0.16), transparent 60%),
+      linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+    background-size:
+      100% 100%,
+      48px 48px,
+      48px 48px;
+  }
+  .bg-ambient-subtle {
+    background-image:
+      radial-gradient(ellipse 60% 35% at 50% -12%, rgba(201, 147, 47, 0.07), transparent 65%),
+      linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px);
+    background-size:
+      100% 100%,
+      56px 56px,
+      56px 56px;
+  }
+
+  /* Badge de ícone circular com gradiente + glow, usado em KPIs e empty states
+     em vez do preenchimento chapado bg-gold-soft. */
+  .icon-badge-gold {
+    @apply flex items-center justify-center rounded-full border border-gold-700/30 bg-gradient-to-br from-gold-500/25 to-gold-700/10 text-gold-300;
+    box-shadow: var(--shadow-glow-gold);
+  }
+  .icon-badge-danger {
+    @apply flex items-center justify-center rounded-full border border-danger/30 bg-gradient-to-br from-danger/25 to-danger/10 text-danger;
   }
 }

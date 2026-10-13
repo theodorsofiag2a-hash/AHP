@@ -58,7 +58,7 @@ export default async function AlternativesPage({
       {!alternatives || alternatives.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gold-soft text-gold-400">
+            <div className="icon-badge-gold h-12 w-12">
               <ClipboardList className="h-6 w-6" />
             </div>
             <CardTitle>Nenhuma alternativa ainda</CardTitle>

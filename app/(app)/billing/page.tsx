@@ -22,7 +22,7 @@ export default async function BillingPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Card>
           <CardContent className="flex items-center gap-4 py-6">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gold-soft text-gold-400">
+            <div className="icon-badge-gold h-12 w-12">
               <Coins className="h-6 w-6" />
             </div>
             <div>
