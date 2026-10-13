@@ -1,5 +1,5 @@
-import { notFound } from "next/navigation";
-import { requireOrgContext } from "@/lib/org";
+import { notFound, redirect } from "next/navigation";
+import { canManageModels, requireOrgContext } from "@/lib/org";
 import { createClient } from "@/lib/supabase/server";
 import { ModelTabs } from "@/components/ahp/model-tabs";
 import { ModelTreeBuilder } from "@/components/ahp/model-tree-builder";
@@ -11,6 +11,8 @@ export default async function ModelEditPage({
 }) {
   const { modelId } = await params;
   const org = await requireOrgContext();
+  if (!canManageModels(org.role)) redirect(`/models/${modelId}/alternatives`);
+
   const supabase = await createClient();
 
   const { data: model } = await supabase
@@ -74,7 +76,7 @@ export default async function ModelEditPage({
         <p className="text-sm text-text-muted">Estruture pilares, subcritérios e escalas de desempenho.</p>
       </div>
 
-      <ModelTabs modelId={model.id} />
+      <ModelTabs modelId={model.id} canManage />
 
       <ModelTreeBuilder modelId={model.id} initialName={model.name} initialPillars={assembledPillars} />
     </div>

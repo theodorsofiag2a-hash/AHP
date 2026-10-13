@@ -1,9 +1,14 @@
+import { notFound } from "next/navigation";
 import { createModel } from "@/actions/models";
+import { canManageModels, requireOrgContext } from "@/lib/org";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input, Label } from "@/components/ui/input";
 
-export default function NewModelPage() {
+export default async function NewModelPage() {
+  const org = await requireOrgContext();
+  if (!canManageModels(org.role)) notFound();
+
   async function handleCreate(formData: FormData) {
     "use server";
     await createModel(String(formData.get("name") ?? ""));

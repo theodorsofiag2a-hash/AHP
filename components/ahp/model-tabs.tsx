@@ -4,10 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
-export function ModelTabs({ modelId }: { modelId: string }) {
+export function ModelTabs({ modelId, canManage = false }: { modelId: string; canManage?: boolean }) {
   const pathname = usePathname();
   const tabs = [
-    { href: `/models/${modelId}/edit`, label: "Estrutura" },
+    ...(canManage ? [{ href: `/models/${modelId}/edit`, label: "Estrutura" }] : []),
     { href: `/models/${modelId}/alternatives`, label: "Fichas de Avaliação" },
     { href: `/models/${modelId}/run`, label: "Matriz & Execução" },
   ];
