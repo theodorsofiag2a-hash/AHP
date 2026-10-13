@@ -80,7 +80,7 @@ export function EvaluationForm({
                     </option>
                     {sub.scales.map((scale) => (
                       <option key={scale.id} value={scale.id} className="text-text-primary">
-                        {scale.description} ({scale.fulfillmentPct}%)
+                        {scale.description}
                       </option>
                     ))}
                   </select>
