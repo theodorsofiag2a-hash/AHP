@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { Layers, ArrowRight } from "lucide-react";
+import { Layers, ArrowRight, Boxes, Coins, Activity } from "lucide-react";
 import { requireOrgContext } from "@/lib/org";
+import { getCreditBalance } from "@/lib/credits";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
 
@@ -8,12 +9,34 @@ export default async function DashboardPage() {
   const org = await requireOrgContext();
   const supabase = await createClient();
 
-  const { data: models } = await supabase
-    .from("ahp_models")
-    .select("id, name, slug, updated_at")
-    .eq("organization_id", org.organizationId)
-    .order("updated_at", { ascending: false })
-    .limit(6);
+  const startOfMonth = new Date();
+  startOfMonth.setDate(1);
+  startOfMonth.setHours(0, 0, 0, 0);
+
+  const [{ data: models }, { count: modelsCount }, creditBalance, { count: runsThisMonth }] = await Promise.all([
+    supabase
+      .from("ahp_models")
+      .select("id, name, slug, updated_at")
+      .eq("organization_id", org.organizationId)
+      .order("updated_at", { ascending: false })
+      .limit(6),
+    supabase
+      .from("ahp_models")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", org.organizationId),
+    getCreditBalance(org.organizationId),
+    supabase
+      .from("ahp_runs")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", org.organizationId)
+      .gte("created_at", startOfMonth.toISOString()),
+  ]);
+
+  const kpis = [
+    { label: "Modelos ativos", value: modelsCount ?? 0, icon: Boxes },
+    { label: "Créditos restantes", value: creditBalance, icon: Coins },
+    { label: "Execuções este mês", value: runsThisMonth ?? 0, icon: Activity },
+  ];
 
   return (
     <div className="flex flex-col gap-8">
@@ -22,10 +45,35 @@ export default async function DashboardPage() {
         <p className="text-sm text-text-muted">Bem-vindo de volta, {org.organizationName}.</p>
       </div>
 
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {kpis.map((kpi) => (
+          <Card key={kpi.label}>
+            <CardContent className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gold-soft text-gold-400">
+                <kpi.icon className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-xs text-text-muted">{kpi.label}</p>
+                <p className="text-xl font-semibold text-text-primary">{kpi.value}</p>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
       <div>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-text-muted">
-          Modelos recentes
-        </h2>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-text-muted">Modelos recentes</h2>
+          {!!models?.length && (
+            <Link
+              href="/models"
+              className="flex items-center gap-1 text-xs font-medium text-gold-300 hover:text-gold-400"
+            >
+              Ver todos os modelos
+              <ArrowRight className="h-3 w-3" />
+            </Link>
+          )}
+        </div>
 
         {!models || models.length === 0 ? (
           <Card>

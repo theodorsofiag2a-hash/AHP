@@ -112,8 +112,8 @@ export default async function RunResultsPage({
 
       <ModelTabs modelId={model.id} />
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="md:col-span-2">
           <CrMeter consistencyRatio={Number(run.consistency_ratio)} />
         </div>
         <Card>
@@ -140,7 +140,7 @@ export default async function RunResultsPage({
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle className="text-sm">Composição da nota por pilar</CardTitle>
