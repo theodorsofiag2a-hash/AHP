@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { canManageModels, requireOrgContext } from "@/lib/org";
+import { requireOrgContext } from "@/lib/org";
 import { createClient } from "@/lib/supabase/server";
 import { ModelTabs } from "@/components/ahp/model-tabs";
 import { PairwiseSliders } from "@/components/ahp/pairwise-sliders";
@@ -41,7 +41,7 @@ export default async function ModelRunPage({
         </p>
       </div>
 
-      <ModelTabs modelId={model.id} canManage={canManageModels(org.role)} />
+      <ModelTabs modelId={model.id} />
 
       {!pillars || pillars.length < 2 ? (
         <p className="text-sm text-text-muted">

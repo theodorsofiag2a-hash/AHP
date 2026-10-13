@@ -1,13 +1,11 @@
 import Link from "next/link";
-import { Plus, Layers, ArrowRight } from "lucide-react";
-import { canManageModels, requireOrgContext } from "@/lib/org";
+import { Layers, ArrowRight } from "lucide-react";
+import { requireOrgContext } from "@/lib/org";
 import { createClient } from "@/lib/supabase/server";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
 
 export default async function DashboardPage() {
   const org = await requireOrgContext();
-  const canManage = canManageModels(org.role);
   const supabase = await createClient();
 
   const { data: models } = await supabase
@@ -17,23 +15,11 @@ export default async function DashboardPage() {
     .order("updated_at", { ascending: false })
     .limit(6);
 
-  const modelHref = (modelId: string) => (canManage ? `/models/${modelId}/edit` : `/models/${modelId}/alternatives`);
-
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Dashboard</h1>
-          <p className="text-sm text-text-muted">Bem-vindo de volta, {org.organizationName}.</p>
-        </div>
-        {canManage && (
-          <Link href="/models/new">
-            <Button>
-              <Plus className="h-4 w-4" />
-              Novo modelo
-            </Button>
-          </Link>
-        )}
+      <div>
+        <h1 className="text-2xl font-semibold">Dashboard</h1>
+        <p className="text-sm text-text-muted">Bem-vindo de volta, {org.organizationName}.</p>
       </div>
 
       <div>
@@ -48,25 +34,13 @@ export default async function DashboardPage() {
                 <Layers className="h-6 w-6" />
               </div>
               <CardTitle>Nenhum modelo ainda</CardTitle>
-              <CardDescription>
-                {canManage
-                  ? "Crie seu primeiro modelo de decisão AHP para começar."
-                  : "Ainda não há modelos disponíveis para sua organização."}
-              </CardDescription>
-              {canManage && (
-                <Link href="/models/new">
-                  <Button className="mt-2">
-                    <Plus className="h-4 w-4" />
-                    Criar modelo
-                  </Button>
-                </Link>
-              )}
+              <CardDescription>Ainda não há modelos disponíveis para sua organização.</CardDescription>
             </CardContent>
           </Card>
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {models.map((model) => (
-              <Link key={model.id} href={modelHref(model.id)}>
+              <Link key={model.id} href={`/models/${model.id}/alternatives`}>
                 <Card className="h-full transition-colors hover:border-border-strong">
                   <CardContent className="flex items-center justify-between">
                     <div>

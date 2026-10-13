@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { canManageModels, requireOrgContext } from "@/lib/org";
+import { requireOrgContext } from "@/lib/org";
 import { createClient } from "@/lib/supabase/server";
 import { ModelTabs } from "@/components/ahp/model-tabs";
 import { CrMeter } from "@/components/ahp/cr-meter";
@@ -110,7 +110,7 @@ export default async function RunResultsPage({
         />
       </div>
 
-      <ModelTabs modelId={model.id} canManage={canManageModels(org.role)} />
+      <ModelTabs modelId={model.id} />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2">

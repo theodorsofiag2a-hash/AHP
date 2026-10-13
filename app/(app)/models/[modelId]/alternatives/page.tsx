@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Plus, Trash2, ClipboardList } from "lucide-react";
-import { canManageModels, requireOrgContext } from "@/lib/org";
+import { requireOrgContext } from "@/lib/org";
 import { createClient } from "@/lib/supabase/server";
 import { createAlternative, deleteAlternative } from "@/actions/alternatives";
 import { ModelTabs } from "@/components/ahp/model-tabs";
@@ -49,7 +49,7 @@ export default async function AlternativesPage({
         <p className="text-sm text-text-muted">Cadastre as alternativas avaliadas neste modelo.</p>
       </div>
 
-      <ModelTabs modelId={model.id} canManage={canManageModels(org.role)} />
+      <ModelTabs modelId={model.id} />
 
       <form action={handleCreate} className="flex max-w-md items-center gap-2">
         <Input name="name" placeholder="Nome da alternativa (ex: Fornecedor A)" required />

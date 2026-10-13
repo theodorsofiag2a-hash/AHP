@@ -41,8 +41,3 @@ export async function requireOrgContext(): Promise<OrgContext> {
     organizationSlug: organization.slug,
   };
 }
-
-/** Owner/admin podem gerir a estrutura dos modelos (pilares/subcritérios/escalas); member só consome. */
-export function canManageModels(role: OrgContext["role"]): boolean {
-  return role === "owner" || role === "admin";
-}
