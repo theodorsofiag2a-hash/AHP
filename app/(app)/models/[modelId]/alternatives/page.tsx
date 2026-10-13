@@ -1,10 +1,11 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { Plus, Trash2, ClipboardList } from "lucide-react";
+import { Plus, ClipboardList } from "lucide-react";
 import { requireOrgContext } from "@/lib/org";
 import { createClient } from "@/lib/supabase/server";
-import { createAlternative, deleteAlternative } from "@/actions/alternatives";
+import { createAlternative } from "@/actions/alternatives";
 import { ModelTabs } from "@/components/ahp/model-tabs";
+import { DeleteAlternativeButton } from "@/components/ahp/delete-alternative-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -35,11 +36,6 @@ export default async function AlternativesPage({
   async function handleCreate(formData: FormData) {
     "use server";
     await createAlternative(modelId, String(formData.get("name") ?? ""));
-  }
-
-  async function handleDelete(alternativeId: string) {
-    "use server";
-    await deleteAlternative(modelId, alternativeId);
   }
 
   return (
@@ -80,11 +76,7 @@ export default async function AlternativesPage({
                 >
                   {alt.name}
                 </Link>
-                <form action={handleDelete.bind(null, alt.id)}>
-                  <Button type="submit" variant="ghost" size="sm">
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </form>
+                <DeleteAlternativeButton modelId={modelId} alternativeId={alt.id} alternativeName={alt.name} />
               </CardContent>
             </Card>
           ))}

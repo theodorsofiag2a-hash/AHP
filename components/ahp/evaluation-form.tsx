@@ -51,16 +51,12 @@ export function EvaluationForm({
 
   const pillarRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const autosaveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const isFirstRender = useRef(true);
 
   const totalSubcriteria = pillars.reduce((sum, p) => sum + p.subcriteria.length, 0);
   const answered = Object.keys(selections).length;
 
   useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      return;
-    }
+    if (selections === initialSelections) return;
     setAutosaveStatus("saving");
     if (autosaveTimeout.current) clearTimeout(autosaveTimeout.current);
     autosaveTimeout.current = setTimeout(() => {

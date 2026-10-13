@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { signInWithGoogle, signUp } from "@/actions/auth";
-import { Button } from "@/components/ui/button";
+import { signInWithGoogle } from "@/actions/auth";
+import { SignupForm } from "@/components/auth/signup-form";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input, Label } from "@/components/ui/input";
 
 export default async function SignupPage({
   searchParams,
@@ -24,21 +24,7 @@ export default async function SignupPage({
           </p>
         )}
 
-        <form action={signUp} className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="organizationName">Nome da empresa</Label>
-            <Input id="organizationName" name="organizationName" placeholder="Sua empresa" required />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="email">E-mail</Label>
-            <Input id="email" name="email" type="email" placeholder="voce@empresa.com" required />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="password">Senha</Label>
-            <Input id="password" name="password" type="password" placeholder="Mínimo 8 caracteres" minLength={8} required />
-          </div>
-          <Button type="submit" className="mt-2 w-full">Criar conta</Button>
-        </form>
+        <SignupForm />
 
         <div className="flex items-center gap-3">
           <div className="h-px flex-1 bg-border-subtle" />
@@ -47,7 +33,9 @@ export default async function SignupPage({
         </div>
 
         <form action={signInWithGoogle}>
-          <Button type="submit" variant="secondary" className="w-full">Continuar com Google</Button>
+          <SubmitButton variant="secondary" className="w-full">
+            Continuar com Google
+          </SubmitButton>
         </form>
 
         <p className="text-center text-sm text-text-muted">
