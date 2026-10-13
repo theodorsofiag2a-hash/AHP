@@ -2,12 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Layers, Wallet, Settings, BookOpenText } from "lucide-react";
+import { LayoutDashboard, Wallet, Settings, BookOpenText } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/models", label: "Modelos", icon: Layers },
   { href: "/billing", label: "Créditos", icon: Wallet },
   { href: "/methodology", label: "Metodologia", icon: BookOpenText },
   { href: "/settings/organization", label: "Configurações", icon: Settings },
