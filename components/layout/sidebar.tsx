@@ -29,7 +29,8 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
         <div className="mb-6 flex items-center justify-between px-2">
           <Link href="/dashboard" className="flex items-center gap-3" onClick={onClose}>
             <Image src="/logo-g2a.png" alt="G2A Consultores" width={48} height={48} className="h-12 w-12 object-contain" priority />
-            <span className="gold-gradient-text border-l border-border-subtle pl-3 text-3xl font-bold tracking-widest">AHP</span>
+            <span className="h-8 w-px bg-border-subtle" aria-hidden="true" />
+<span className="gold-gradient-text translate-y-2 text-xl font-bold tracking-widest">AHP</span>
           </Link>
           <button
             type="button"
