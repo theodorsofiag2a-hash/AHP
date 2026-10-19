@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,9 +9,7 @@ export default function Home() {
     <div className="bg-ambient flex flex-1 flex-col">
       <header className="flex items-center justify-between border-b border-border-subtle px-6 py-4 sm:px-10">
         <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gradient-to-br from-gold-400 to-gold-700 text-sm font-bold text-[#141414]">
-            G2
-          </div>
+          <Image src="/logo-g2a.png" alt="G2A Consultores" width={40} height={40} className="h-10 w-10 object-contain" priority />
           <span className="text-sm font-semibold tracking-wide">
             G2A <span className="gold-gradient-text">AHP</span>
           </span>

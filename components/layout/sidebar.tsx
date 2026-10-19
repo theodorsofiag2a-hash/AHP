@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutDashboard, Wallet, Settings, X } from "lucide-react";
@@ -27,9 +28,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
       >
         <div className="mb-6 flex items-center justify-between px-2">
           <Link href="/dashboard" className="flex items-center gap-2" onClick={onClose}>
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gradient-to-br from-gold-400 to-gold-700 text-sm font-bold text-[#141414]">
-              G2
-            </div>
+            <Image src="/logo-g2a.png" alt="G2A Consultores" width={40} height={40} className="h-10 w-10 object-contain" priority />
             <span className="text-sm font-semibold tracking-wide">
               G2A <span className="gold-gradient-text">AHP</span>
             </span>
