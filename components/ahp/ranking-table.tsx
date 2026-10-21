@@ -24,7 +24,7 @@ export function RankingTable({ rows }: { rows: RankingRow[] }) {
                 className={cn(
                   "flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold",
                   row.rank === 1
-                    ? "bg-gradient-to-br from-gold-500/30 to-gold-700/15 text-gold-300 shadow-[0_0_12px_-1px_rgba(201,147,47,0.5)]"
+                    ? "bg-gold-soft text-gold-700 shadow-glow-gold"
                     : "bg-bg-surface-alt text-text-muted"
                 )}
               >

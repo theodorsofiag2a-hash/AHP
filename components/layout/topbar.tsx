@@ -40,7 +40,7 @@ export function Topbar({
   }, []);
 
   return (
-    <header className="relative z-10 flex h-16 items-center justify-between border-b border-border-subtle bg-bg-base px-4 shadow-[0_4px_16px_-8px_rgba(0,0,0,0.5)] md:px-6">
+    <header className="relative z-10 flex h-16 items-center justify-between border-b border-border-subtle bg-bg-surface/90 px-4 backdrop-blur md:px-6">
       <div className="flex items-center gap-2">
         <button
           type="button"
@@ -56,7 +56,7 @@ export function Topbar({
             {organizationName}
             <ChevronDown className="h-3.5 w-3.5 text-text-faint transition-transform group-open:rotate-180" />
           </summary>
-          <div className="absolute left-0 top-full z-20 mt-2 w-56 rounded-lg border border-border-subtle bg-bg-surface-alt p-2 shadow-lg">
+          <div className="absolute left-0 top-full z-20 mt-2 w-56 rounded-lg border border-border-subtle bg-bg-surface p-2 shadow-card-hover">
             {userEmail && <p className="truncate px-2 py-1.5 text-xs text-text-faint">{userEmail}</p>}
             <Link
               href="/settings/organization"

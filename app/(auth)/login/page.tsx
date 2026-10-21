@@ -12,7 +12,7 @@ export default async function LoginPage({
   const { error } = await searchParams;
 
   return (
-    <Card>
+    <Card className="card-accent relative">
       <CardHeader>
         <CardTitle>Entrar</CardTitle>
         <CardDescription>Acesse sua conta para continuar suas análises.</CardDescription>
@@ -40,7 +40,7 @@ export default async function LoginPage({
 
         <p className="text-center text-sm text-text-muted">
           Não tem conta?{" "}
-          <Link href="/signup" className="font-medium text-gold-400 hover:text-gold-300">
+          <Link href="/signup" className="font-medium text-gold-700 underline-offset-4 hover:text-gold-600 hover:underline">
             Criar conta
           </Link>
         </p>

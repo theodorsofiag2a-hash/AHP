@@ -15,7 +15,7 @@ export default async function BillingPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Créditos</h1>
+        <h1 className="text-page-title">Créditos</h1>
         <p className="text-sm text-text-muted">Acompanhe seu saldo e o histórico de uso.</p>
       </div>
 

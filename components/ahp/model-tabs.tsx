@@ -22,7 +22,7 @@ export function ModelTabs({ modelId }: { modelId: string }) {
             className={cn(
               "border-b-2 px-4 py-2.5 text-sm font-medium transition-colors",
               isActive
-                ? "border-gold-500 text-gold-300"
+                ? "border-gold-600 text-gold-700"
                 : "border-transparent text-text-muted hover:text-text-primary"
             )}
           >

@@ -11,7 +11,7 @@ export default async function AdminCreditsPage() {
   return (
     <div className="mx-auto flex max-w-md flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Conceder créditos</h1>
+        <h1 className="text-page-title">Conceder créditos</h1>
         <p className="text-sm text-text-muted">
           Uso interno G2A — libera créditos para qualquer organização enquanto não há checkout automatizado.
         </p>

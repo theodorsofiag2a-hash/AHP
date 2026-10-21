@@ -41,7 +41,7 @@ export default async function DashboardPage() {
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-2xl font-semibold">Dashboard</h1>
+        <h1 className="text-page-title">Dashboard</h1>
         <p className="text-sm text-text-muted">Bem-vindo de volta, {org.organizationName}.</p>
       </div>
 
@@ -54,7 +54,7 @@ export default async function DashboardPage() {
               </div>
               <div>
                 <p className="text-xs text-text-muted">{kpi.label}</p>
-                <p className="text-xl font-semibold text-text-primary">{kpi.value}</p>
+                <p className="font-display text-2xl font-semibold text-text-primary">{kpi.value}</p>
               </div>
             </CardContent>
           </Card>
@@ -63,11 +63,11 @@ export default async function DashboardPage() {
 
       <div>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-text-muted">Modelos recentes</h2>
+          <h2 className="text-eyebrow-gold font-ui">Modelos recentes</h2>
           {!!models?.length && (
             <Link
               href="/models"
-              className="flex items-center gap-1 text-xs font-medium text-gold-300 hover:text-gold-400"
+              className="flex items-center gap-1 text-xs font-medium text-gold-700 hover:text-gold-600"
             >
               Ver todos os modelos
               <ArrowRight className="h-3 w-3" />
@@ -89,7 +89,7 @@ export default async function DashboardPage() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {models.map((model) => (
               <Link key={model.id} href={`/models/${model.id}/alternatives`}>
-                <Card className="h-full transition-all duration-200 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-[0_1px_0_0_rgba(255,255,255,0.05)_inset,0_16px_40px_-8px_rgba(0,0,0,0.65)]">
+                <Card className="h-full transition-all duration-200 hover:-translate-y-1 hover:border-gold-500/40 hover:shadow-card-hover">
                   <CardContent className="flex items-center justify-between">
                     <div>
                       <p className="font-medium text-text-primary">{model.name}</p>

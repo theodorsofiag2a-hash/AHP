@@ -41,7 +41,7 @@ export default async function AlternativesPage({
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">{model.name}</h1>
+        <h1 className="text-page-title">{model.name}</h1>
         <p className="text-sm text-text-muted">Cadastre as alternativas avaliadas neste modelo.</p>
       </div>
 
@@ -72,7 +72,7 @@ export default async function AlternativesPage({
               <CardContent className="flex items-center justify-between py-3">
                 <Link
                   href={`/models/${modelId}/alternatives/${alt.id}`}
-                  className="flex-1 font-medium text-text-primary hover:text-gold-300"
+                  className="flex-1 font-medium text-text-primary hover:text-gold-700"
                 >
                   {alt.name}
                 </Link>

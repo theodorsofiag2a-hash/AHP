@@ -35,7 +35,7 @@ export default async function ModelRunPage({
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">{model.name}</h1>
+        <h1 className="text-page-title">{model.name}</h1>
         <p className="text-sm text-text-muted">
           Compare a importância relativa entre os pilares para calcular os pesos (AHP).
         </p>

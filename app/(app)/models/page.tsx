@@ -16,7 +16,7 @@ export default async function ModelsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold">Modelos</h1>
+      <h1 className="text-page-title">Modelos</h1>
 
       {!models || models.length === 0 ? (
         <Card>
@@ -32,7 +32,7 @@ export default async function ModelsPage() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {models.map((model) => (
             <Link key={model.id} href={`/models/${model.id}/alternatives`}>
-              <Card className="h-full transition-all duration-200 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-[0_1px_0_0_rgba(255,255,255,0.05)_inset,0_16px_40px_-8px_rgba(0,0,0,0.65)]">
+              <Card className="h-full transition-all duration-200 hover:-translate-y-1 hover:border-gold-500/40 hover:shadow-card-hover">
                 <CardContent className="flex items-center justify-between">
                   <div>
                     <p className="font-medium text-text-primary">{model.name}</p>

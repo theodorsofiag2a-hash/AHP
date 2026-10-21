@@ -84,7 +84,7 @@ export default async function AlternativeEvaluationPage({
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">{alternative.name}</h1>
+        <h1 className="text-page-title">{alternative.name}</h1>
         <p className="text-sm text-text-muted">Ficha de avaliação — {model.name}</p>
       </div>
 

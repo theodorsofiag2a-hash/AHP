@@ -1,5 +1,5 @@
 /**
- * Paleta categórica validada (CVD + contraste) contra o fundo carbon do app (#141414).
+ * Paleta categórica (CVD) com contraste ≥ 3:1 contra o fundo branco dos cards (#ffffff).
  * Ordem fixa — nunca cicle nem reordene por rank; a identidade é sempre a mesma posição
  * (ex: pilar[0] é sempre a cor 1). Ver skill dataviz / references/palette.md.
  */

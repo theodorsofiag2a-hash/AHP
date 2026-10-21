@@ -12,7 +12,7 @@ export default async function SignupPage({
   const { error } = await searchParams;
 
   return (
-    <Card>
+    <Card className="card-accent relative">
       <CardHeader>
         <CardTitle>Criar conta</CardTitle>
         <CardDescription>Comece a estruturar suas decisões com AHP.</CardDescription>
@@ -40,7 +40,7 @@ export default async function SignupPage({
 
         <p className="text-center text-sm text-text-muted">
           Já tem conta?{" "}
-          <Link href="/login" className="font-medium text-gold-400 hover:text-gold-300">
+          <Link href="/login" className="font-medium text-gold-700 underline-offset-4 hover:text-gold-600 hover:underline">
             Entrar
           </Link>
         </p>

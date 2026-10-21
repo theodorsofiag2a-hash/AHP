@@ -21,7 +21,7 @@ export default async function OrganizationSettingsPage() {
   return (
     <div className="flex max-w-2xl flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Configurações da organização</h1>
+        <h1 className="text-page-title">Configurações da organização</h1>
         <p className="text-sm text-text-muted">Dados da sua empresa e membros com acesso.</p>
       </div>
 

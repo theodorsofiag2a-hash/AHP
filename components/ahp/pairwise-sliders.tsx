@@ -75,7 +75,7 @@ export function PairwiseSliders({ modelId, pillars }: { modelId: string; pillars
               onChange={(e) =>
                 setValues((prev) => prev.map((v, idx) => (idx === currentIndex ? Number(e.target.value) : v)))
               }
-              className="h-11 flex-1 cursor-pointer appearance-none rounded-full bg-bg-surface-alt accent-gold-500"
+              className="h-11 flex-1 cursor-pointer appearance-none rounded-full bg-bg-surface-alt accent-gold-600"
             />
             <datalist id={scaleListId}>
               {SCALE_MARKS.map((mark) => (
@@ -89,7 +89,7 @@ export function PairwiseSliders({ modelId, pillars }: { modelId: string; pillars
               "text-center text-xs font-semibold",
               label.tone === "neutral" && "text-text-muted",
               label.tone === "left" && "text-text-primary",
-              label.tone === "right" && "text-gold-400"
+              label.tone === "right" && "text-gold-700"
             )}
           >
             {label.text}

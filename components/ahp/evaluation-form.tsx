@@ -106,7 +106,7 @@ export function EvaluationForm({
                 className={cn(
                   "flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
                   complete
-                    ? "border-gold-700/40 bg-gold-soft text-gold-300"
+                    ? "border-gold-600/40 bg-gold-soft text-gold-700"
                     : pillarAnswered > 0
                       ? "border-border-strong bg-bg-surface-alt text-text-primary"
                       : "border-border-subtle text-text-muted hover:text-text-primary"
@@ -155,7 +155,7 @@ export function EvaluationForm({
             >
               <Card>
                 <CardHeader className="flex-row items-center justify-between">
-                  <CardTitle className="text-sm uppercase tracking-wide text-gold-300">{pillar.name}</CardTitle>
+                  <CardTitle className="font-ui text-sm uppercase tracking-[0.16em] text-gold-700">{pillar.name}</CardTitle>
                   <Badge variant={pillarAnswered === pillar.subcriteria.length ? "gold" : "neutral"}>
                     {pillarAnswered}/{pillar.subcriteria.length}
                   </Badge>

@@ -1,15 +1,18 @@
-import Image from "next/image";
 import Link from "next/link";
+import { BrandMark } from "@/components/layout/brand-mark";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="bg-ambient flex min-h-full flex-1 flex-col items-center justify-center gap-8 px-6 py-16">
-      <Link href="/" className="flex items-center gap-3">
-        <Image src="/logo-g2a.png" alt="G2A Consultores" width={56} height={56} className="h-14 w-14 object-contain" priority />
-        <span className="h-8 w-px bg-border-subtle" aria-hidden="true" />
-<span className="gold-gradient-text translate-y-2.5 text-xl font-bold tracking-widest">AHP</span>
-      </Link>
-      <div className="w-full max-w-sm">{children}</div>
+    <div className="flex min-h-full flex-1 flex-col">
+      <header className="relative bg-ink px-6 py-5 sm:px-10">
+        <Link href="/" className="inline-block">
+          <BrandMark size={56} />
+        </Link>
+        <div className="divider-gold absolute inset-x-0 bottom-0" aria-hidden="true" />
+      </header>
+      <div className="bg-ambient flex flex-1 items-center justify-center px-6 py-16">
+        <div className="animate-fade-up w-full max-w-sm">{children}</div>
+      </div>
     </div>
   );
 }

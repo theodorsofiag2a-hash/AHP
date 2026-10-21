@@ -11,6 +11,7 @@ import {
   Tooltip,
 } from "recharts";
 import { categoricalColor } from "@/lib/chart-colors";
+import { CHART_THEME, CHART_TOOLTIP_STYLE } from "@/lib/chart-theme";
 
 interface RadarRow {
   pillar: string;
@@ -21,14 +22,14 @@ export function AhpRadarChart({ data, seriesNames }: { data: RadarRow[]; seriesN
   return (
     <ResponsiveContainer width="100%" height={320}>
       <RechartsRadarChart data={data} outerRadius="70%">
-        <PolarGrid stroke="#333333" />
-        <PolarAngleAxis dataKey="pillar" stroke="#9a9a94" fontSize={12} />
-        <PolarRadiusAxis angle={30} domain={[0, 10]} stroke="#6b6b66" fontSize={10} tickCount={6} />
+        <PolarGrid stroke={CHART_THEME.grid} />
+        <PolarAngleAxis dataKey="pillar" stroke={CHART_THEME.axis} fontSize={12} />
+        <PolarRadiusAxis angle={30} domain={[0, 10]} stroke={CHART_THEME.axisFaint} fontSize={10} tickCount={6} />
         <Tooltip
-          contentStyle={{ background: "#1c1c1c", border: "1px solid #333333", borderRadius: 8, fontSize: 12 }}
-          labelStyle={{ color: "#f5f5f0" }}
+          contentStyle={CHART_TOOLTIP_STYLE}
+          labelStyle={{ color: CHART_THEME.text }}
         />
-        <Legend wrapperStyle={{ fontSize: 12, color: "#9a9a94" }} />
+        <Legend wrapperStyle={{ fontSize: 12, color: CHART_THEME.axis }} />
         {seriesNames.map((name, i) => (
           <Radar
             key={name}
