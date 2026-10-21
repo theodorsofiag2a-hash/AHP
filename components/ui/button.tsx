@@ -24,6 +24,14 @@ const sizeClasses: Record<ButtonSize, string> = {
   lg: "h-12 px-8 text-xs rounded gap-2",
 };
 
+const baseClasses =
+  "inline-flex items-center justify-center whitespace-nowrap font-ui font-semibold uppercase tracking-[0.15em] transition-colors duration-150 disabled:opacity-40 disabled:pointer-events-none";
+
+/** Classes do botão para elementos que não são <button> (ex.: <a> de mailto). */
+export function buttonClasses(variant: ButtonVariant = "primary", size: ButtonSize = "md") {
+  return cn(baseClasses, variantClasses[variant], sizeClasses[size]);
+}
+
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = "primary", size = "md", disabled, ...props }, ref) => {
     return (
@@ -31,7 +39,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         disabled={disabled}
         className={cn(
-          "inline-flex items-center justify-center whitespace-nowrap font-ui font-semibold uppercase tracking-[0.15em] transition-colors duration-150 disabled:opacity-40 disabled:pointer-events-none",
+          baseClasses,
           variantClasses[variant],
           sizeClasses[size],
           className

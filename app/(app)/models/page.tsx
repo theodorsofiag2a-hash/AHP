@@ -3,6 +3,7 @@ import { Layers, ArrowRight } from "lucide-react";
 import { requireOrgContext } from "@/lib/org";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
+import { ContactG2a } from "@/components/layout/contact-g2a";
 
 export default async function ModelsPage() {
   const org = await requireOrgContext();
@@ -25,7 +26,10 @@ export default async function ModelsPage() {
               <Layers className="h-6 w-6" />
             </div>
             <CardTitle>Nenhum modelo ainda</CardTitle>
-            <CardDescription>Ainda não há modelos disponíveis para sua organização.</CardDescription>
+            <CardDescription className="max-w-md">
+              A G2A configura o modelo de decisão (pilares e critérios) da sua organização. Fale com a G2A para começar.
+            </CardDescription>
+            <ContactG2a subject="Configurar modelo de decisão (AHP)" organizationSlug={org.organizationSlug} />
           </CardContent>
         </Card>
       ) : (

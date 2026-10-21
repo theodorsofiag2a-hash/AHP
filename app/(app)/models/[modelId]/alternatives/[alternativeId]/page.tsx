@@ -1,4 +1,7 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
+import { ContactG2a } from "@/components/layout/contact-g2a";
 import { requireOrgContext } from "@/lib/org";
 import { createClient } from "@/lib/supabase/server";
 import { EvaluationForm } from "@/components/ahp/evaluation-form";
@@ -84,14 +87,24 @@ export default async function AlternativeEvaluationPage({
   return (
     <div className="flex flex-col gap-6">
       <div>
+        <Link
+          href={`/models/${modelId}/alternatives`}
+          className="mb-3 inline-flex items-center gap-1.5 text-xs font-medium text-text-muted transition-colors hover:text-gold-700"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          Voltar para as alternativas
+        </Link>
         <h1 className="text-page-title">{alternative.name}</h1>
         <p className="text-sm text-text-muted">Ficha de avaliação — {model.name}</p>
       </div>
 
       {assembledPillars.length === 0 ? (
-        <p className="text-sm text-text-muted">
-          Este modelo ainda não tem pilares/subcritérios configurados. Contate a G2A para configurar a estrutura deste modelo.
-        </p>
+        <div className="flex flex-col items-start gap-3">
+          <p className="text-sm text-text-muted">
+            Este modelo ainda não tem pilares e subcritérios configurados. A estrutura do modelo é definida pela G2A.
+          </p>
+          <ContactG2a subject={`Configurar estrutura do modelo ${model.name}`} organizationSlug={org.organizationSlug} />
+        </div>
       ) : (
         <EvaluationForm
           modelId={modelId}

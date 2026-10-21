@@ -1,9 +1,11 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { requireOrgContext } from "@/lib/org";
 import { createClient } from "@/lib/supabase/server";
 import { calcularAHPGenerico } from "@/lib/ahp/calculate";
 import { pillarPairIndexes, sliderToSaaty } from "@/lib/ahp/matrix";
+import { MIN_ALTERNATIVES_TO_RUN, alternativeProgress, incompleteAlternatives } from "@/lib/ahp/readiness";
 import type { AhpAlternativeInput, AhpPillarInput } from "@/lib/ahp/types";
 
 export type ExecuteAhpRunResult = { ok: true; runId: string } | { ok: false; error: string };
@@ -35,8 +37,11 @@ export async function executeAhpRun(modelId: string, sliderValues: number[]): Pr
     .select("id, name")
     .eq("model_id", modelId);
   const alternatives = alternativesRaw ?? [];
-  if (alternatives.length === 0) {
-    return { ok: false, error: "Cadastre ao menos uma alternativa avaliada antes de rodar a matriz." };
+  if (alternatives.length < MIN_ALTERNATIVES_TO_RUN) {
+    return {
+      ok: false,
+      error: `Cadastre ao menos ${MIN_ALTERNATIVES_TO_RUN} alternativas para rodar a matriz.`,
+    };
   }
 
   const subcriterionIds = subcriteria.map((s) => s.id);
@@ -47,6 +52,14 @@ export async function executeAhpRun(modelId: string, sliderValues: number[]): Pr
         .in("subcriterion_id", subcriterionIds)
     : { data: [] };
   const scores = scoresRaw ?? [];
+
+  const incomplete = incompleteAlternatives(alternativeProgress(subcriterionIds, alternatives, scores));
+  if (incomplete.length > 0) {
+    return {
+      ok: false,
+      error: `Complete a ficha de avaliação de: ${incomplete.map((a) => a.name).join(", ")}.`,
+    };
+  }
 
   const calcPillars: AhpPillarInput[] = pillars.map((pillar) => ({
     id: pillar.id,
@@ -98,6 +111,9 @@ export async function executeAhpRun(modelId: string, sliderValues: number[]): Pr
     }
     return { ok: false, error: error.message };
   }
+
+  // O saldo aparece no topbar e no dashboard (layout persistente); sem isso ele fica desatualizado.
+  revalidatePath("/", "layout");
 
   return { ok: true, runId: runId as string };
 }

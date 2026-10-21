@@ -1,14 +1,12 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { Plus, ClipboardList } from "lucide-react";
+import { ClipboardList } from "lucide-react";
 import { requireOrgContext } from "@/lib/org";
 import { createClient } from "@/lib/supabase/server";
-import { createAlternative } from "@/actions/alternatives";
 import { ModelTabs } from "@/components/ahp/model-tabs";
 import { DeleteAlternativeButton } from "@/components/ahp/delete-alternative-button";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { CreateAlternativeForm } from "@/components/ahp/create-alternative-form";
 
 export default async function AlternativesPage({
   params,
@@ -33,11 +31,6 @@ export default async function AlternativesPage({
     .eq("model_id", modelId)
     .order("updated_at", { ascending: false });
 
-  async function handleCreate(formData: FormData) {
-    "use server";
-    await createAlternative(modelId, String(formData.get("name") ?? ""));
-  }
-
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -47,13 +40,7 @@ export default async function AlternativesPage({
 
       <ModelTabs modelId={model.id} />
 
-      <form action={handleCreate} className="flex max-w-md items-center gap-2">
-        <Input name="name" placeholder="Nome da alternativa (ex: Fornecedor A)" required />
-        <Button type="submit" size="md">
-          <Plus className="h-4 w-4" />
-          Adicionar
-        </Button>
-      </form>
+      <CreateAlternativeForm modelId={modelId} />
 
       {!alternatives || alternatives.length === 0 ? (
         <Card>

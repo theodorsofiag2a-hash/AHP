@@ -5,10 +5,17 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 
-export async function createAlternative(modelId: string, name: string) {
+export type CreateAlternativeState = { error?: string };
+
+/** Compatível com useActionState: erros voltam como estado (exibidos no formulário) em vez de derrubar a página. */
+export async function createAlternative(
+  modelId: string,
+  _prevState: CreateAlternativeState,
+  formData: FormData
+): Promise<CreateAlternativeState> {
   const supabase = await createClient();
-  const parsed = z.string().trim().min(1).safeParse(name);
-  if (!parsed.success) throw new Error("Nomeie a alternativa");
+  const parsed = z.string().trim().min(1).max(120).safeParse(String(formData.get("name") ?? ""));
+  if (!parsed.success) return { error: "Informe um nome para a alternativa (até 120 caracteres)." };
 
   const { data, error } = await supabase
     .from("ahp_alternatives")
@@ -16,7 +23,8 @@ export async function createAlternative(modelId: string, name: string) {
     .select("id")
     .single();
 
-  if (error || !data) throw new Error(error?.message ?? "Falha ao criar alternativa");
+  if (error?.code === "23505") return { error: "Já existe uma alternativa com esse nome neste modelo." };
+  if (error || !data) return { error: "Não foi possível criar a alternativa. Tente novamente." };
 
   redirect(`/models/${modelId}/alternatives/${data.id}`);
 }

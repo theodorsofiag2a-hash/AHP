@@ -1,13 +1,15 @@
 "use client";
 
-import { useId, useMemo, useState, useTransition } from "react";
+import { useEffect, useId, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { executeAhpRun } from "@/actions/ahp-run";
 import { pillarPairIndexes } from "@/lib/ahp/matrix";
+import { RUN_COST_CREDITS } from "@/lib/credit-cost";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Dialog } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
 interface PillarOption {
@@ -24,11 +26,21 @@ function sliderLabel(value: number, pillarA: string, pillarB: string) {
   return { text: `${pillarB} é ${factor}x mais importante`, tone: "right" as const };
 }
 
-export function PairwiseSliders({ modelId, pillars }: { modelId: string; pillars: PillarOption[] }) {
+export function PairwiseSliders({
+  modelId,
+  pillars,
+  creditBalance,
+}: {
+  modelId: string;
+  pillars: PillarOption[];
+  creditBalance: number;
+}) {
   const pairs = useMemo(() => pillarPairIndexes(pillars.length), [pillars.length]);
   const [values, setValues] = useState<number[]>(() => pairs.map(() => 0));
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPending, startTransition] = useTransition();
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
   const router = useRouter();
   const scaleListId = useId();
 
@@ -36,13 +48,25 @@ export function PairwiseSliders({ modelId, pillars }: { modelId: string; pillars
   const [i, j] = pairs[currentIndex];
   const label = sliderLabel(values[currentIndex], pillars[i].name, pillars[j].name);
 
+  const hasAnswers = values.some((v) => v !== 0) || currentIndex > 0;
+
+  // Respostas do wizard só existem em memória; avisa antes de recarregar/fechar a aba e perder tudo.
+  useEffect(() => {
+    if (!hasAnswers || submitted) return;
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [hasAnswers, submitted]);
+
   function handleSubmit() {
     startTransition(async () => {
       const result = await executeAhpRun(modelId, values);
       if (!result.ok) {
+        setConfirmOpen(false);
         toast.error(result.error);
         return;
       }
+      setSubmitted(true);
       toast.success("Execução concluída.");
       router.push(`/models/${modelId}/run/${result.runId}`);
     });
@@ -67,6 +91,8 @@ export function PairwiseSliders({ modelId, pillars }: { modelId: string; pillars
             <span className="w-1/3 text-right text-sm font-medium text-text-primary">{pillars[i].name}</span>
             <input
               type="range"
+              aria-label={`Importância relativa: ${pillars[i].name} versus ${pillars[j].name}`}
+              aria-valuetext={label.text}
               min={-8}
               max={8}
               step={1}
@@ -85,6 +111,7 @@ export function PairwiseSliders({ modelId, pillars }: { modelId: string; pillars
             <span className="w-1/3 text-sm font-medium text-text-primary">{pillars[j].name}</span>
           </div>
           <p
+            aria-live="polite"
             className={cn(
               "text-center text-xs font-semibold",
               label.tone === "neutral" && "text-text-muted",
@@ -108,9 +135,8 @@ export function PairwiseSliders({ modelId, pillars }: { modelId: string; pillars
         </Button>
 
         {isLastPair ? (
-          <Button onClick={handleSubmit} disabled={isPending} size="lg">
-            {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-            Processar algoritmo e gerar resultados
+          <Button onClick={() => setConfirmOpen(true)} disabled={isPending} size="lg">
+            Gerar resultado
           </Button>
         ) : (
           <Button onClick={() => setCurrentIndex((idx) => Math.min(pairs.length - 1, idx + 1))}>
@@ -119,6 +145,27 @@ export function PairwiseSliders({ modelId, pillars }: { modelId: string; pillars
           </Button>
         )}
       </div>
+
+      <Dialog
+        open={confirmOpen}
+        onClose={() => !isPending && setConfirmOpen(false)}
+        title="Gerar resultado?"
+        description={`Esta execução usa ${RUN_COST_CREDITS} crédito e não pode ser desfeita.`}
+      >
+        <p className="text-sm text-text-muted">
+          Saldo: {creditBalance} → <strong className="text-text-primary">{creditBalance - RUN_COST_CREDITS}</strong>{" "}
+          {creditBalance - RUN_COST_CREDITS === 1 ? "crédito" : "créditos"}
+        </p>
+        <div className="mt-5 flex justify-end gap-2">
+          <Button variant="secondary" onClick={() => setConfirmOpen(false)} disabled={isPending}>
+            Voltar
+          </Button>
+          <Button onClick={handleSubmit} disabled={isPending}>
+            {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+            Confirmar e gerar
+          </Button>
+        </div>
+      </Dialog>
     </div>
   );
 }

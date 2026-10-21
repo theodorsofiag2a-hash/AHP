@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { Loader2, Check, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { saveEvaluation } from "@/actions/alternatives";
@@ -51,6 +51,9 @@ export function EvaluationForm({
 
   const pillarRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const autosaveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const idPrefix = useId();
+  // Seleções ainda não enviadas ao servidor (null = nada pendente). Usado para não perder a última escolha ao sair.
+  const unsavedSelections = useRef<Record<string, string> | null>(null);
 
   const totalSubcriteria = pillars.reduce((sum, p) => sum + p.subcriteria.length, 0);
   const answered = Object.keys(selections).length;
@@ -58,10 +61,14 @@ export function EvaluationForm({
   useEffect(() => {
     if (selections === initialSelections) return;
     setAutosaveStatus("saving");
+    unsavedSelections.current = selections;
     if (autosaveTimeout.current) clearTimeout(autosaveTimeout.current);
     autosaveTimeout.current = setTimeout(() => {
       saveEvaluation(modelId, alternativeId, selections)
-        .then(() => setAutosaveStatus("saved"))
+        .then(() => {
+          if (unsavedSelections.current === selections) unsavedSelections.current = null;
+          setAutosaveStatus("saved");
+        })
         .catch((error) => {
           setAutosaveStatus("error");
           toast.error(error instanceof Error ? error.message : "Falha ao salvar automaticamente.");
@@ -73,6 +80,22 @@ export function EvaluationForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selections]);
 
+  // Ao sair da página (ou fechar a aba) dentro da janela do debounce, envia o que ficou pendente.
+  useEffect(() => {
+    const warn = (e: BeforeUnloadEvent) => {
+      if (unsavedSelections.current) e.preventDefault();
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => {
+      window.removeEventListener("beforeunload", warn);
+      const pending = unsavedSelections.current;
+      if (pending) {
+        unsavedSelections.current = null;
+        saveEvaluation(modelId, alternativeId, pending).catch(() => {});
+      }
+    };
+  }, [modelId, alternativeId]);
+
   function scrollToPillar(pillarId: string) {
     pillarRefs.current[pillarId]?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -82,6 +105,7 @@ export function EvaluationForm({
     startTransition(async () => {
       try {
         await saveEvaluation(modelId, alternativeId, selections);
+        unsavedSelections.current = null;
         setAutosaveStatus("saved");
         toast.success("Ficha de avaliação salva.");
       } catch (error) {
@@ -165,8 +189,9 @@ export function EvaluationForm({
                     const unanswered = attemptedSave && !selections[sub.id];
                     return (
                       <div key={sub.id} className="flex flex-col gap-1.5">
-                        <Label>{sub.name}</Label>
+                        <Label htmlFor={`${idPrefix}-${sub.id}`}>{sub.name}</Label>
                         <Select
+                          id={`${idPrefix}-${sub.id}`}
                           value={selections[sub.id] ?? ""}
                           onChange={(e) => setSelections((prev) => ({ ...prev, [sub.id]: e.target.value }))}
                           className={cn(!selections[sub.id] && "text-text-faint", unanswered && "border-danger")}
