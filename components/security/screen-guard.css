@@ -1,0 +1,39 @@
+/* Proteção contra impressão e captura de tela. Ver screen-guard.tsx. */
+
+/* Impressão / "Salvar como PDF": a página sai em branco. */
+@media print {
+  html,
+  body {
+    display: none !important;
+  }
+}
+
+/* Captura em andamento ou janela sem foco: esconde todo o conteúdo e cobre a tela. */
+html[data-screen-guard="on"] body > * {
+  visibility: hidden !important;
+}
+
+html[data-screen-guard="on"]::after {
+  content: "Conteúdo protegido. Volte para esta janela para continuar.";
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  text-align: center;
+  font: 600 15px/1.5 system-ui, sans-serif;
+  letter-spacing: 0.02em;
+  color: #f3eee2;
+  background: #121210;
+}
+
+/* Dificulta arrastar/copiar imagens e texto de áreas de leitura, sem afetar campos de formulário. */
+body :not(input):not(textarea):not([contenteditable="true"]) {
+  -webkit-user-select: none;
+  user-select: none;
+}
+body img {
+  -webkit-user-drag: none;
+}

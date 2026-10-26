@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Inter, Playfair_Display } from "next/font/google";
 import { Toaster } from "sonner";
+import { ScreenGuard } from "@/components/security/screen-guard";
 import "./globals.css";
 
 const inter = Inter({
@@ -31,6 +32,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${inter.variable} ${geist.variable} ${playfair.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-bg-base text-text-primary">
+        <ScreenGuard />
         {children}
         <Toaster
           theme="light"
