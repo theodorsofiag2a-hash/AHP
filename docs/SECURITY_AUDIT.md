@@ -45,6 +45,8 @@ As 3 migrations da segunda rodada foram aplicadas no projeto de produção e con
 
 **Pendência de baixa severidade identificada nesta validação:** a política mínima de senha configurada para o provedor de autenticação ainda é mais permissiva do que os 8 caracteres exigidos pelo formulário e pela validação do servidor (S8) — vale alinhar a configuração do provedor com o mesmo mínimo, como item de limpeza, sem urgência.
 
+Os 6 headers de segurança do `next.config.ts` (S5) foram confirmados com `curl -I` direto em produção, idênticos ao configurado; a CSP segue em modo *report-only*, como planejado. Rotas autenticadas (`/dashboard`) seguem redirecionando corretamente para `/login` quando não há sessão.
+
 ## Resumo executivo
 
 O app usa RLS em todas as 14 tabelas e isola organizações corretamente **para leitura**. O problema está em dois pontos que decidem sozinhos, sem checagem extra: a função `create_ahp_run` (que grava o resultado da matriz e cobra o crédito) e a rota de callback OAuth. Os dois foram comprovados neste ambiente: um usuário conseguiu gerar um ranking inteiramente forjado — incluindo apontar a execução para o modelo de **outra organização** — e amplificar 1 crédito em 3000 linhas gravadas. Também confirmei, direto no endpoint público de configuração do Supabase de produção, que a confirmação de e-mail está ligada (isso reduz um dos riscos hipotéticos do plano), mas o Next.js instalado está na faixa de uma CVE crítica e o app não envia nenhum cabeçalho de segurança.
