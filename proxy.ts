@@ -10,6 +10,12 @@ export async function proxy(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      // Precisa bater exatamente com lib/supabase/server.ts — o proxy também escreve/renova
+      // este cookie, e atributos divergentes entre os dois criariam cookies duplicados.
+      cookieOptions: {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+      },
       cookies: {
         getAll() {
           return request.cookies.getAll();

@@ -51,12 +51,57 @@ export async function saveEvaluation(
   const supabase = await createClient();
   const data = evaluationSchema.parse(selections);
 
+  const subcriterionIds = Object.keys(data);
   const scaleIds = Array.from(new Set(Object.values(data)));
+
   const { data: scales, error: scalesError } = await supabase
     .from("ahp_scales")
-    .select("id, fulfillment_pct")
+    .select("id, subcriterion_id, fulfillment_pct")
     .in("id", scaleIds);
   if (scalesError) throw new Error(scalesError.message);
+
+  // A RLS só confere se a *alternativa* pertence à organização; não confere se a escala
+  // escolhida pertence ao subcritério indicado para ela, nem se o subcritério pertence ao
+  // mesmo modelo da alternativa. Sem isso, dava para gravar a nota de uma escala de outro
+  // subcritério (ou de outro modelo) como se fosse a resposta certa (ver
+  // docs/SECURITY_AUDIT.md, achado S6).
+  const scaleById = new Map((scales ?? []).map((s) => [s.id, s]));
+  for (const [subcriterionId, scaleId] of Object.entries(data)) {
+    const scale = scaleById.get(scaleId);
+    if (!scale || scale.subcriterion_id !== subcriterionId) {
+      throw new Error("Seleção inválida: a escala não pertence a este subcritério.");
+    }
+  }
+
+  const { data: alternative, error: alternativeError } = await supabase
+    .from("ahp_alternatives")
+    .select("model_id")
+    .eq("id", alternativeId)
+    .maybeSingle();
+  if (alternativeError) throw new Error(alternativeError.message);
+  if (!alternative) throw new Error("Alternativa não encontrada.");
+
+  const { data: subcriteria, error: subError } = await supabase
+    .from("ahp_subcriteria")
+    .select("id, pillar_id")
+    .in("id", subcriterionIds);
+  if (subError) throw new Error(subError.message);
+
+  const pillarIds = Array.from(new Set((subcriteria ?? []).map((s) => s.pillar_id)));
+  const { data: pillars, error: pillarError } = pillarIds.length
+    ? await supabase.from("ahp_pillars").select("id, model_id").in("id", pillarIds)
+    : { data: [], error: null };
+  if (pillarError) throw new Error(pillarError.message);
+
+  const modelIdByPillarId = new Map((pillars ?? []).map((p) => [p.id, p.model_id]));
+  const subcriterionById = new Map((subcriteria ?? []).map((s) => [s.id, s]));
+  for (const subcriterionId of subcriterionIds) {
+    const subcriterion = subcriterionById.get(subcriterionId);
+    const subcriterionModelId = subcriterion ? modelIdByPillarId.get(subcriterion.pillar_id) : undefined;
+    if (!subcriterion || subcriterionModelId !== alternative.model_id) {
+      throw new Error("Seleção inválida: subcritério não pertence a este modelo.");
+    }
+  }
 
   const fulfillmentByScaleId = new Map((scales ?? []).map((s) => [s.id, Number(s.fulfillment_pct)]));
 

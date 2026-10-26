@@ -7,9 +7,11 @@ import { isPlatformAdmin } from "@/lib/admin-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const grantSchema = z.object({
-  organizationSlug: z.string().trim().min(1),
-  amount: z.number().int().positive(),
-  description: z.string().trim().min(1),
+  organizationSlug: z.string().trim().min(1).max(80),
+  // Teto defensivo contra erro de digitação (ex. casa decimal a mais): nenhum pacote real
+  // chega perto disso. Ajustar aqui se um dia existir concessão legítima maior.
+  amount: z.number().int().positive().max(100_000, "Quantidade acima do limite permitido (100.000)."),
+  description: z.string().trim().min(1).max(500, "Descrição muito longa (máx. 500 caracteres)."),
 });
 
 export type GrantCreditsResult = { ok: true } | { ok: false; error: string };

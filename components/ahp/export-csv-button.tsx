@@ -11,7 +11,13 @@ interface ExportCsvButtonProps {
 }
 
 function csvEscape(value: string | number) {
-  const str = String(value);
+  let str = String(value);
+  // Neutraliza injeção de fórmula (CSV/Excel/Sheets): um valor que começa com =, +, -, @
+  // ou tab/CR é interpretado como fórmula ao abrir a planilha, não como texto literal.
+  // Prefixar com um apóstrofo força a leitura como texto, sem alterar o que é exibido.
+  if (/^[=+\-@\t\r]/.test(str)) {
+    str = `'${str}`;
+  }
   return /[",\n;]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
 }
 

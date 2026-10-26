@@ -24,7 +24,20 @@ Os 5 achados mais graves (S1–S5) foram corrigidos e reverificados neste mesmo 
 
 **Ressalva sobre o `REVOKE EXECUTE` da mesma migration:** além da validação em S1/S3, a migration também tenta revogar de `PUBLIC` o `EXECUTE` de `create_ahp_run`, `generate_org_slug`, `handle_new_user` e `credit_transactions_before_insert`, concedendo de volta só para `authenticated`/`service_role` onde cabe (endurecimento do achado S13, os avisos `*_security_definer_function_executable` do advisor). No ambiente de teste local, o `supabase db reset` reaplica grants padrão por fora das migrations e mascarou o efeito dessa parte — não deu para confirmar dinamicamente. A validação dentro da função (a correção real de S1/S3) funciona independente disso. **Depois de aplicar esta migration em produção, rodar `get_advisors(type: security)` de novo e confirmar que os 4 avisos `*_security_definer_function_executable` referentes a essas funções desapareceram; se persistirem, investigar grants no nível do schema.**
 
-S6 em diante continuam como descrito na tabela de achados (não corrigidos nesta rodada).
+## Segunda rodada de correções (2026-10-26, mesmo dia): S6–S9, S11, S12, parte de S14
+
+| ID | Status |
+|---|---|
+| S6 | **Corrigido em duas camadas.** `actions/alternatives.ts` (`saveEvaluation`) agora valida, antes de gravar, que cada escala pertence ao subcritério indicado e que o subcritério pertence ao modelo da alternativa — erro em pt-BR, sem gastar um round-trip a mais. E, porque o problema foi encontrado gravando **direto no PostgREST** (sem passar pelo app), a correção que vale de verdade é a nova `with check` da policy `ahp_alternative_scores_all` (`supabase/migrations/20261026020000_harden_alternative_scores_rls.sql`), que faz o mesmo cruzamento dentro do banco. **Reverificado** em ambiente local descartável: a mesma gravação de "escala de outro subcritério" e "escala de outra organização" que antes passava agora volta `42501 new row violates row-level security policy`; a gravação com a escala certa continua indo com `201`. |
+| S7 | **Corrigido.** Nova migration `supabase/migrations/20261026010000_restrict_organization_update.sql` recria `is_org_admin()` (removida em `20261013010000` só para a estrutura de modelos, não para organização) e restringe a policy `organizations_update` a `owner`/`admin`. Como não existe hoje nenhuma tela que edite esses campos (`settings/organization` é só leitura), a correção não muda nada visível. **Reverificado**: um usuário com role `member` (inserido direto na tabela para simular um funcionário comum) teve a tentativa de alterar a organização silenciosamente ignorada pela RLS (a PATCH "funciona" do ponto de vista HTTP — PostgREST responde 204 mesmo com zero linhas afetadas — mas o nome no banco não mudou); o `owner` da própria organização continua podendo editar a própria org normalmente. |
+| S8 | **Corrigido.** `actions/auth.ts` agora valida a senha no servidor com zod (mínimo de 8, igual ao HTML) antes de chamar o Supabase — antes, um POST direto contornava o `minLength` do formulário e passava pela checagem fraca do GoTrue (6 caracteres). |
+| S9 | **Corrigido.** `signIn`/`signUp` não repassam mais `error.message` cru do Supabase para a URL. `signIn` mapeia só os dois casos seguros de expor ("E-mail ou senha incorretos.", "Confirme seu e-mail..."); qualquer outro erro (inclusive qualquer falha de `signUp`, propositalmente, para não confirmar se um e-mail já existe) vira a mesma mensagem genérica. |
+| S11 | **Corrigido.** `csvEscape` em `export-csv-button.tsx` agora prefixa com `'` qualquer valor que comece com `=`, `+`, `-`, `@`, tab ou CR antes de aplicar o escaping de aspas/vírgula já existente — neutraliza a fórmula sem mudar o que a célula mostra no Excel/Sheets. |
+| S12 | **Corrigido, com o cuidado que o achado já citava.** `lib/supabase/server.ts` e `proxy.ts` agora passam `cookieOptions: { httpOnly: true, secure: produção }` ao `createServerClient` (os dois precisam bater exatamente, porque o proxy também escreve/renova o mesmo cookie). Confirmei antes de aplicar que `lib/supabase/client.ts` (o client de navegador, que precisaria ler esse cookie via JS) não é importado em nenhum componente do app hoje — então não há regressão funcional. Se um dia um Client Component passar a usar sessão via `createBrowserClient`, isso vai quebrar e vai precisar de um endpoint de servidor para expor o que for necessário, em vez de voltar o cookie a `httpOnly:false`. |
+| S14 (parcial) | **Parcialmente corrigido.** `grantCredits` agora tem teto (`amount` até 100.000, `description` até 500 caracteres, `organizationSlug` até 80) — fecha o caso de erro de digitação gerar uma concessão absurda. Rate limiting/CAPTCHA na aplicação e idempotência de `executeAhpRun` **continuam em aberto**: exigem infraestrutura (um store de rate limit) ou um desenho de idempotency key que não cabia numa correção pontual; o duplo clique acidental já é mitigado pelo botão desabilitado durante o envio e pelo diálogo de confirmação adicionado na primeira rodada, mas um replay deliberado da requisição ainda cobra crédito a cada chamada. |
+| S10, S13 (parte), S15 | **Mantidos em aberto, por decisão explícita.** S10 pede uma tabela própria de admins com UI de gestão — é uma mudança de produto, não uma correção pontual, e o risco já está reduzido (confirmação de e-mail ligada em produção). A parte de S13 sobre mover a extensão `unaccent` de schema e ligar "Leaked Password Protection" não foi feita: a primeira exige tocar numa função usada por `generate_org_slug` sem ganho de segurança real (é só um aviso de lint, não um caminho de exploração); a segunda é um toggle do painel do Supabase, fora do alcance de uma migration. `legacy/index.html` (S15) não foi tocado — é o app antigo, fora do Next, e mexer nele só por causa de um lint de segurança não parecia proporcional. |
+
+**Também adicionado nesta rodada (item "Contínuo" do roadmap):** `.github/dependabot.yml` (atualização semanal de `npm` e GitHub Actions) e `.github/workflows/ci.yml` (`tsc`, `lint`, `test`, `build` e `npm audit --omit=dev --audit-level=high` em todo push/PR). Não existia nenhum CI antes.
 
 ## Resumo executivo
 
@@ -71,15 +84,15 @@ Nada aqui é "fique tranquilo": a tabela abaixo prioriza o que corrigir primeiro
 3. **S4** ✅ — `next` do callback restrito a caminho relativo.
 4. **S5** ✅ — CSP (report-only), HSTS, X-Frame-Options, nosniff, Referrer-Policy, Permissions-Policy, `poweredByHeader: false`.
 
-### Em seguida (30 dias)
-5. **S6**: validar em `saveEvaluation` que a escala pertence ao subcritério informado (join explícito antes do insert) e adicionar CHECK de `score_value` no banco.
-6. **S7**: introduzir papéis efetivos — restringir `organizations_update` e exclusão de alternativas a `owner`/`admin`.
-7. **S8/S9**: validar a senha no servidor (zod, mínimo real de 8+ caracteres) e trocar os `error.message` crus por mensagens genéricas no cliente (manter o detalhe só em log de servidor).
-8. **S10**: mover a lista de admins para uma coluna/tabela no banco, com atribuição explícita em vez de allowlist por e-mail em variável de ambiente.
-9. **S11**: neutralizar `=`, `+`, `-`, `@` no início de qualquer célula do CSV (prefixar com `'` ou aspas simples) em `csvEscape`.
+### Em seguida (30 dias) — ✅ feito nesta segunda rodada, exceto onde marcado
+5. **S6** ✅ — `saveEvaluation` valida a escala, e a RLS de `ahp_alternative_scores` passou a validar o mesmo no banco (join explícito). CHECK de `score_value` continua em aberto (não encontrei exploração real dele; a validação de pertencimento já impede o caso prático).
+6. **S7** ✅ — `organizations_update` restrita a `owner`/`admin`. **Exclusão de alternativas continua aberta a qualquer membro**, por decisão: é o fluxo normal de colaboração do app (qualquer membro cadastra e remove alternativas na mesma tela), e restringir sem mexer na UI teria quebrado o botão de excluir para quem não é admin, sem aviso.
+7. **S8/S9** ✅ — senha validada no servidor; mensagens de erro de auth genéricas/mapeadas.
+8. **S10** — não feito (ver "Mantidos em aberto" acima: é uma mudança de produto, não uma correção pontual).
+9. **S11** ✅ — `csvEscape` neutraliza `=`, `+`, `-`, `@` no início da célula.
 
 ### Contínuo
-10. CI com `npm audit` e Dependabot (hoje não existem). CSP em modo enforce depois do período de observação. MFA para as contas de `PLATFORM_ADMIN_EMAILS`. Runbook de incidente (rotação de `SUPABASE_SERVICE_ROLE_KEY`, revogação de sessões, reversão de créditos). `*.pdf` no `.gitignore`.
+10. CI com `npm audit` e Dependabot ✅ (`.github/workflows/ci.yml`, `.github/dependabot.yml`). `*.pdf` no `.gitignore` ✅. Ainda em aberto: CSP em modo enforce depois do período de observação, MFA para as contas de `PLATFORM_ADMIN_EMAILS`, runbook de incidente (rotação de `SUPABASE_SERVICE_ROLE_KEY`, revogação de sessões, reversão de créditos).
 
 ## Ambiente de teste usado
 
