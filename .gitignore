@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# material de referência solto na raiz (não faz parte do projeto)
+*.pdf
