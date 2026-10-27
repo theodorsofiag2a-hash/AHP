@@ -4,7 +4,9 @@ import { ArrowLeft } from "lucide-react";
 import { ContactG2a } from "@/components/layout/contact-g2a";
 import { requireOrgContext } from "@/lib/org";
 import { createClient } from "@/lib/supabase/server";
-import { EvaluationForm } from "@/components/ahp/evaluation-form";
+import { EvaluationForm, type ConnectionConfig } from "@/components/ahp/evaluation-form";
+import type { AutoSubcriterion } from "@/lib/grid/auto-fill";
+import { GRID_BUS_COLUMNS, parseAutoField, parseAutoMatch, toGridBus, type GridBusRow } from "@/lib/grid/types";
 
 export default async function AlternativeEvaluationPage({
   params,
@@ -25,7 +27,7 @@ export default async function AlternativeEvaluationPage({
 
   const { data: alternative } = await supabase
     .from("ahp_alternatives")
-    .select("id, name")
+    .select("id, name, bus_id, power_mw")
     .eq("id", alternativeId)
     .eq("model_id", modelId)
     .maybeSingle();
@@ -42,7 +44,7 @@ export default async function AlternativeEvaluationPage({
   const { data: subcriteria } = pillarIds.length
     ? await supabase
         .from("ahp_subcriteria")
-        .select("id, pillar_id, name, sort_order")
+        .select("id, pillar_id, name, sort_order, auto_field")
         .in("pillar_id", pillarIds)
         .order("sort_order", { ascending: true })
     : { data: [] };
@@ -52,7 +54,7 @@ export default async function AlternativeEvaluationPage({
   const { data: scales } = subcriterionIds.length
     ? await supabase
         .from("ahp_scales")
-        .select("id, subcriterion_id, description, fulfillment_pct, sort_order")
+        .select("id, subcriterion_id, description, fulfillment_pct, sort_order, auto_match")
         .in("subcriterion_id", subcriterionIds)
         .order("sort_order", { ascending: true })
     : { data: [] };
@@ -84,6 +86,36 @@ export default async function AlternativeEvaluationPage({
     (existingScores ?? []).map((s) => [s.subcriterion_id, s.scale_id])
   );
 
+  // Só modelos com subcritérios ligados ao barramento (auto_field) mostram o cartão de conexão.
+  const autoSubcriteria: AutoSubcriterion[] = [];
+  for (const sub of subcriteria ?? []) {
+    const autoField = parseAutoField(sub.auto_field);
+    if (!autoField) continue;
+    autoSubcriteria.push({
+      id: sub.id,
+      name: sub.name,
+      autoField,
+      scales: (scales ?? [])
+        .filter((sc) => sc.subcriterion_id === sub.id)
+        .map((sc) => ({ id: sc.id, autoMatch: parseAutoMatch(sc.auto_match) })),
+    });
+  }
+
+  let connection: ConnectionConfig | undefined;
+  if (autoSubcriteria.length > 0) {
+    const { data: busRows } = await supabase
+      .from("grid_buses")
+      .select(GRID_BUS_COLUMNS)
+      .order("uf", { ascending: true })
+      .order("name", { ascending: true });
+    connection = {
+      buses: ((busRows ?? []) as GridBusRow[]).map(toGridBus),
+      autoSubcriteria,
+      initialBusId: alternative.bus_id,
+      initialPowerMw: alternative.power_mw != null ? Number(alternative.power_mw) : null,
+    };
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -111,6 +143,7 @@ export default async function AlternativeEvaluationPage({
           alternativeId={alternativeId}
           pillars={assembledPillars}
           initialSelections={initialSelections}
+          connection={connection}
         />
       )}
     </div>

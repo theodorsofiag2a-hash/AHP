@@ -9,6 +9,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select } from "@/components/ui/select";
 import { Label } from "@/components/ui/input";
+import { ConnectionCard } from "@/components/ahp/connection-card";
+import type { AutoSubcriterion } from "@/lib/grid/auto-fill";
+import type { GridBus } from "@/lib/grid/types";
 import { cn } from "@/lib/utils";
 
 interface ScaleOption {
@@ -31,6 +34,14 @@ interface PillarOption {
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 
+/** Barramentos da NT-ONS e regras de preenchimento; só existe em modelos com subcritérios `auto_field`. */
+export interface ConnectionConfig {
+  buses: GridBus[];
+  autoSubcriteria: AutoSubcriterion[];
+  initialBusId: string | null;
+  initialPowerMw: number | null;
+}
+
 const AUTOSAVE_DELAY_MS = 800;
 
 export function EvaluationForm({
@@ -38,13 +49,17 @@ export function EvaluationForm({
   alternativeId,
   pillars,
   initialSelections,
+  connection,
 }: {
   modelId: string;
   alternativeId: string;
   pillars: PillarOption[];
   initialSelections: Record<string, string>;
+  connection?: ConnectionConfig;
 }) {
   const [selections, setSelections] = useState<Record<string, string>>(initialSelections);
+  // Subcritérios preenchidos pelo barramento nesta sessão (selo "auto"); some ao editar à mão.
+  const [autoFilled, setAutoFilled] = useState<Set<string>>(new Set());
   const [attemptedSave, setAttemptedSave] = useState(false);
   const [autosaveStatus, setAutosaveStatus] = useState<SaveStatus>("idle");
   const [isPending, startTransition] = useTransition();
@@ -95,6 +110,12 @@ export function EvaluationForm({
       }
     };
   }, [modelId, alternativeId]);
+
+  function handleAutoFill(autoSelections: Record<string, string>) {
+    // Escalas escolhidas pelo barramento sobrescrevem as anteriores; o autosave existente grava e valida (saveEvaluation).
+    setSelections((prev) => ({ ...prev, ...autoSelections }));
+    setAutoFilled(new Set(Object.keys(autoSelections)));
+  }
 
   function scrollToPillar(pillarId: string) {
     pillarRefs.current[pillarId]?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -166,6 +187,18 @@ export function EvaluationForm({
         </div>
       </div>
 
+      {connection && (
+        <ConnectionCard
+          modelId={modelId}
+          alternativeId={alternativeId}
+          buses={connection.buses}
+          autoSubcriteria={connection.autoSubcriteria}
+          initialBusId={connection.initialBusId}
+          initialPowerMw={connection.initialPowerMw}
+          onAutoFill={handleAutoFill}
+        />
+      )}
+
       <div className="flex flex-col gap-4">
         {pillars.map((pillar) => {
           const pillarAnswered = pillar.subcriteria.filter((s) => selections[s.id]).length;
@@ -189,11 +222,22 @@ export function EvaluationForm({
                     const unanswered = attemptedSave && !selections[sub.id];
                     return (
                       <div key={sub.id} className="flex flex-col gap-1.5">
-                        <Label htmlFor={`${idPrefix}-${sub.id}`}>{sub.name}</Label>
+                        <div className="flex items-center gap-2">
+                          <Label htmlFor={`${idPrefix}-${sub.id}`}>{sub.name}</Label>
+                          {autoFilled.has(sub.id) && <Badge variant="success">auto</Badge>}
+                        </div>
                         <Select
                           id={`${idPrefix}-${sub.id}`}
                           value={selections[sub.id] ?? ""}
-                          onChange={(e) => setSelections((prev) => ({ ...prev, [sub.id]: e.target.value }))}
+                          onChange={(e) => {
+                            setSelections((prev) => ({ ...prev, [sub.id]: e.target.value }));
+                            setAutoFilled((prev) => {
+                              if (!prev.has(sub.id)) return prev;
+                              const next = new Set(prev);
+                              next.delete(sub.id);
+                              return next;
+                            });
+                          }}
                           className={cn(!selections[sub.id] && "text-text-faint", unanswered && "border-danger")}
                         >
                           <option value="" disabled>

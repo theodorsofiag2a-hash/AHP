@@ -120,3 +120,37 @@ export async function saveEvaluation(
   revalidatePath(`/models/${modelId}/alternatives/${alternativeId}`);
   revalidatePath(`/models/${modelId}/alternatives`);
 }
+
+const connectionSchema = z.object({
+  busId: z.string().uuid().nullable(),
+  powerMw: z.number().positive().max(5000).nullable(),
+});
+
+/**
+ * Vincula a alternativa a um barramento da NT-ONS (`grid_buses`) e registra a potência
+ * pretendida. A tabela de barramentos é só leitura para o usuário; aqui só se grava o vínculo.
+ * O preenchimento da ficha a partir do barramento acontece no cliente e passa por
+ * `saveEvaluation`, que mantém as validações de escala/subcritério.
+ */
+export async function saveConnection(
+  modelId: string,
+  alternativeId: string,
+  input: { busId: string | null; powerMw: number | null }
+) {
+  const supabase = await createClient();
+  const data = connectionSchema.parse(input);
+
+  const { data: updated, error } = await supabase
+    .from("ahp_alternatives")
+    .update({ bus_id: data.busId, power_mw: data.powerMw })
+    .eq("id", alternativeId)
+    .eq("model_id", modelId)
+    .select("id");
+
+  if (error?.code === "23503") throw new Error("Barramento não encontrado.");
+  if (error) throw new Error(error.message);
+  if (!updated || updated.length === 0) throw new Error("Alternativa não encontrada.");
+
+  revalidatePath(`/models/${modelId}/alternatives/${alternativeId}`);
+  revalidatePath(`/models/${modelId}/alternatives`);
+}

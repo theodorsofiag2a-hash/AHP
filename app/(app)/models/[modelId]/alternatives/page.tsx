@@ -7,6 +7,15 @@ import { ModelTabs } from "@/components/ahp/model-tabs";
 import { DeleteAlternativeButton } from "@/components/ahp/delete-alternative-button";
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
 import { CreateAlternativeForm } from "@/components/ahp/create-alternative-form";
+import { Badge } from "@/components/ui/badge";
+import { GRID_BUS_COLUMNS, toGridBus, type GridBusRow } from "@/lib/grid/types";
+import { assessViability } from "@/lib/grid/viability";
+
+const VIABILITY_BADGE = {
+  ok: { label: "Conexão viável", variant: "success" },
+  attention: { label: "Conexão com atenção", variant: "gold" },
+  inviable: { label: "Inviável", variant: "danger" },
+} as const;
 
 export default async function AlternativesPage({
   params,
@@ -27,7 +36,7 @@ export default async function AlternativesPage({
 
   const { data: alternatives } = await supabase
     .from("ahp_alternatives")
-    .select("id, name, updated_at")
+    .select(`id, name, updated_at, power_mw, bus:grid_buses(${GRID_BUS_COLUMNS})`)
     .eq("model_id", modelId)
     .order("updated_at", { ascending: false });
 
@@ -54,19 +63,33 @@ export default async function AlternativesPage({
         </Card>
       ) : (
         <div className="flex flex-col gap-2">
-          {alternatives.map((alt) => (
-            <Card key={alt.id}>
-              <CardContent className="flex items-center justify-between py-3">
-                <Link
-                  href={`/models/${modelId}/alternatives/${alt.id}`}
-                  className="flex-1 font-medium text-text-primary hover:text-gold-700"
-                >
-                  {alt.name}
-                </Link>
-                <DeleteAlternativeButton modelId={modelId} alternativeId={alt.id} alternativeName={alt.name} />
-              </CardContent>
-            </Card>
-          ))}
+          {alternatives.map((alt) => {
+            // Many-to-one: o PostgREST devolve um objeto (ou null); o cast cobre a tipagem genérica.
+            const busRow = alt.bus as unknown as GridBusRow | null;
+            const bus = busRow ? toGridBus(busRow) : null;
+            const viability = bus ? assessViability(bus, alt.power_mw != null ? Number(alt.power_mw) : null) : null;
+            return (
+              <Card key={alt.id}>
+                <CardContent className="flex items-center justify-between gap-3 py-3">
+                  <Link
+                    href={`/models/${modelId}/alternatives/${alt.id}`}
+                    className="flex flex-1 flex-col font-medium text-text-primary hover:text-gold-700"
+                  >
+                    {alt.name}
+                    {bus && (
+                      <span className="text-xs font-normal text-text-muted">
+                        {bus.name} · {bus.uf} · {bus.kv} kV
+                      </span>
+                    )}
+                  </Link>
+                  {viability && (
+                    <Badge variant={VIABILITY_BADGE[viability.status].variant}>{VIABILITY_BADGE[viability.status].label}</Badge>
+                  )}
+                  <DeleteAlternativeButton modelId={modelId} alternativeId={alt.id} alternativeName={alt.name} />
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>
