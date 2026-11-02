@@ -42,7 +42,7 @@ export default async function BillingPage() {
             <div className="flex-1">
               <p className="font-medium text-text-primary">Como contratar</p>
               <p className="text-sm text-text-muted">
-                Escolha um plano abaixo e fale com a G2A. Após a confirmação, os créditos são liberados na sua conta.
+                Escolha um plano abaixo. Após a confirmação, os créditos são liberados automaticamente na sua conta.
               </p>
               <div className="mt-3">
                 <ContactG2a size="sm" label="Solicitar créditos" subject="Solicitação de créditos (AHP)" organizationSlug={org.organizationSlug} />
