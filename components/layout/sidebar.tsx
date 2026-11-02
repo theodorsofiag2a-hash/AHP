@@ -9,7 +9,7 @@ import { BrandMark } from "@/components/layout/brand-mark";
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/models", label: "Modelos", icon: Boxes },
-  { href: "/billing", label: "Créditos", icon: Wallet },
+  { href: "/billing", label: "Créditos e planos", icon: Wallet },
   { href: "/settings/organization", label: "Configurações", icon: Settings },
 ];
 
