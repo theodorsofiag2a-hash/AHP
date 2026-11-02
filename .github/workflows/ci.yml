@@ -23,6 +23,9 @@ jobs:
 
       - run: npm ci
 
+      # Gera os tipos de rotas/layouts (LayoutProps etc.), que não são versionados.
+      - run: npx next typegen
+
       - run: npx tsc --noEmit
 
       - run: npm run lint

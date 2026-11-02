@@ -75,6 +75,8 @@ export function EvaluationForm({
 
   useEffect(() => {
     if (selections === initialSelections) return;
+    // Autosave com debounce: o estado "Salvando..." precisa acompanhar a mudança das seleções.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setAutosaveStatus("saving");
     unsavedSelections.current = selections;
     if (autosaveTimeout.current) clearTimeout(autosaveTimeout.current);
