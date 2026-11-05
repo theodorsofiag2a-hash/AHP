@@ -3,7 +3,15 @@ import { NextResponse, type NextRequest } from "next/server";
 
 const PUBLIC_PATHS = ["/", "/login", "/signup", "/signup/verifique-seu-email", "/esqueci-senha", "/auth/callback"];
 
+// Chamado pelo Asaas, sem cookie de sessão: a rota se autentica sozinha (header asaas-access-token).
+// Sem esta saída o proxy responderia 307 -> /login e a fila de webhooks do Asaas pausaria após 15 falhas.
+const WEBHOOK_PATHS = ["/api/webhooks/asaas"];
+
 export async function proxy(request: NextRequest) {
+  if (WEBHOOK_PATHS.includes(request.nextUrl.pathname)) {
+    return NextResponse.next();
+  }
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
