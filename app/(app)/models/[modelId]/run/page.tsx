@@ -6,6 +6,7 @@ import { getCreditBalance } from "@/lib/credits";
 import { RUN_COST_CREDITS } from "@/lib/credit-cost";
 import { MIN_ALTERNATIVES_TO_RUN, alternativeProgress, incompleteAlternatives } from "@/lib/ahp/readiness";
 import { createClient } from "@/lib/supabase/server";
+import { GATE_COLUMNS, isEliminated, type GateRow } from "@/lib/gates";
 import { ModelTabs } from "@/components/ahp/model-tabs";
 import { PairwiseSliders } from "@/components/ahp/pairwise-sliders";
 import { ContactG2a } from "@/components/layout/contact-g2a";
@@ -33,7 +34,7 @@ export default async function ModelRunPage({
 
   const { data: model } = await supabase
     .from("ahp_models")
-    .select("id, name")
+    .select("id, name, report_template")
     .eq("id", modelId)
     .eq("organization_id", org.organizationId)
     .maybeSingle();
@@ -51,7 +52,7 @@ export default async function ModelRunPage({
     pillarIds.length
       ? supabase.from("ahp_subcriteria").select("id").in("pillar_id", pillarIds)
       : Promise.resolve({ data: [] as { id: string }[] }),
-    supabase.from("ahp_alternatives").select("id, name").eq("model_id", modelId).order("name"),
+    supabase.from("ahp_alternatives").select(`id, name, ${GATE_COLUMNS}`).eq("model_id", modelId).order("name"),
     getCreditBalance(org.organizationId),
   ]);
 
@@ -63,7 +64,12 @@ export default async function ModelRunPage({
         .in("subcriterion_id", subcriterionIds)
     : { data: [] as { alternative_id: string; subcriterion_id: string }[] };
 
-  const alternativesList = alternatives ?? [];
+  const allAlternatives = alternatives ?? [];
+  // Filtros eliminatórios (modelos de projeto): quem reprova fica fora do ranking e não precisa de ficha completa.
+  const eliminated =
+    model.report_template === "bess_project" ? allAlternatives.filter((a) => isEliminated(a as GateRow)) : [];
+  const eliminatedIds = new Set(eliminated.map((a) => a.id));
+  const alternativesList = allAlternatives.filter((a) => !eliminatedIds.has(a.id));
   const incomplete = incompleteAlternatives(alternativeProgress(subcriterionIds, alternativesList, scores ?? []));
   const creditsLabel = creditBalance === 1 ? "crédito" : "créditos";
 
@@ -81,8 +87,9 @@ export default async function ModelRunPage({
     content = (
       <Blocked title={`Cadastre ao menos ${MIN_ALTERNATIVES_TO_RUN} alternativas`}>
         <p className="text-sm text-text-muted">
-          O ranking compara alternativas entre si. Você tem {alternativesList.length} cadastrada
-          {alternativesList.length === 1 ? "" : "s"}.
+          O ranking compara alternativas entre si. Você tem {alternativesList.length} apta
+          {alternativesList.length === 1 ? "" : "s"}
+          {eliminated.length > 0 ? ` (${eliminated.length} fora pelos filtros eliminatórios)` : ""}.
         </p>
         <Link
           href={`/models/${model.id}/alternatives`}
@@ -135,6 +142,11 @@ export default async function ModelRunPage({
           Saldo: <strong className="text-text-primary">{creditBalance} {creditsLabel}</strong> · esta execução usa{" "}
           {RUN_COST_CREDITS}.
         </p>
+        {eliminated.length > 0 && (
+          <p className="rounded-md border border-danger/30 bg-danger-soft px-3 py-2 text-sm text-danger">
+            Fora do ranking por não atender a algum filtro eliminatório: {eliminated.map((a) => a.name).join(", ")}.
+          </p>
+        )}
         <PairwiseSliders modelId={model.id} pillars={pillars} creditBalance={creditBalance} />
       </>
     );

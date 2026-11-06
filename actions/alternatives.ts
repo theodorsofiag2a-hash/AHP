@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import type { GateValues } from "@/lib/gates";
 
 export type CreateAlternativeState = { error?: string };
 
@@ -153,4 +154,36 @@ export async function saveConnection(
 
   revalidatePath(`/models/${modelId}/alternatives/${alternativeId}`);
   revalidatePath(`/models/${modelId}/alternatives`);
+}
+
+const gatesSchema = z.object({
+  rte: z.boolean().nullable(),
+  deadline: z.boolean().nullable(),
+  auction: z.boolean().nullable(),
+  technical: z.boolean().nullable(),
+});
+
+/** Filtros eliminatórios do projeto (true atende, false não atende, null pendente). */
+export async function saveGates(modelId: string, alternativeId: string, input: GateValues) {
+  const supabase = await createClient();
+  const data = gatesSchema.parse(input);
+
+  const { data: updated, error } = await supabase
+    .from("ahp_alternatives")
+    .update({
+      gate_rte: data.rte,
+      gate_deadline: data.deadline,
+      gate_auction: data.auction,
+      gate_technical: data.technical,
+    })
+    .eq("id", alternativeId)
+    .eq("model_id", modelId)
+    .select("id");
+
+  if (error) throw new Error(error.message);
+  if (!updated || updated.length === 0) throw new Error("Alternativa não encontrada.");
+
+  revalidatePath(`/models/${modelId}/alternatives/${alternativeId}`);
+  revalidatePath(`/models/${modelId}/alternatives`);
+  revalidatePath(`/models/${modelId}/run`);
 }
