@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { signIn } from "@/actions/auth";
 import { Input, Label } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { nativeValidityMessage } from "@/lib/form-validation";
 import { cn } from "@/lib/utils";
@@ -51,11 +52,11 @@ export function LoginForm() {
             Esqueci minha senha
           </Link>
         </div>
-        <Input
+        <PasswordInput
           id="password"
           name="password"
-          type="password"
           placeholder="••••••••"
+          autoComplete="current-password"
           required
           className={cn(errors.password && "border-danger")}
         />
