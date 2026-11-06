@@ -164,8 +164,9 @@ async function handlePaymentEvent(admin: Admin, asaas: AsaasClient, envelope: As
   try {
     payment = await asaas.get<AsaasPayment>(`/payments/${encodeURIComponent(paymentId)}`);
   } catch (err) {
-    // Cobrança apagada: se já a espelhamos, marca como removida; se não, não há o que espelhar.
-    if (err instanceof AsaasApiError && err.status === 404) {
+    // 404 só é "cobrança apagada" quando o próprio evento diz isso. Em qualquer outro evento, 404 indica
+    // configuração errada (ex.: chave de outra conta Asaas) e precisa aparecer como FAILED, não passar em silêncio.
+    if (err instanceof AsaasApiError && err.status === 404 && envelope.event === "PAYMENT_DELETED") {
       await admin.from("asaas_payments").update({ status: "DELETED" }).eq("asaas_payment_id", paymentId);
       return;
     }
