@@ -1,4 +1,6 @@
 import { requireOrgContext } from "@/lib/org";
+import { isBillingEnabledFor } from "@/lib/billing/config";
+import { BillingProfileForm, EMPTY_BILLING_PROFILE } from "@/components/billing/billing-profile-form";
 import { createClient } from "@/lib/supabase/server";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,6 +20,11 @@ export default async function OrganizationSettingsPage() {
     .select("role, joined_at, user_id")
     .eq("organization_id", org.organizationId);
 
+  const canEditBilling = isBillingEnabledFor(org.organizationSlug) && (org.role === "owner" || org.role === "admin");
+  const { data: billing } = canEditBilling
+    ? await supabase.from("billing_profiles").select("*").eq("organization_id", org.organizationId).maybeSingle()
+    : { data: null };
+
   return (
     <div className="flex max-w-2xl flex-col gap-6">
       <div>
@@ -31,6 +38,34 @@ export default async function OrganizationSettingsPage() {
           <CardDescription>Identificador: {org.organizationSlug}</CardDescription>
         </CardHeader>
       </Card>
+
+      {canEditBilling && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Dados de cobrança</CardTitle>
+            <CardDescription>Usados no pagamento do plano e na nota fiscal.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <BillingProfileForm
+              initial={
+                billing
+                  ? {
+                      legalName: billing.legal_name ?? "",
+                      cpfCnpj: billing.cpf_cnpj ?? "",
+                      email: billing.email ?? "",
+                      phone: billing.phone ?? "",
+                      postalCode: billing.postal_code ?? "",
+                      address: billing.address ?? "",
+                      addressNumber: billing.address_number ?? "",
+                      complement: billing.complement ?? "",
+                      province: billing.province ?? "",
+                    }
+                  : { ...EMPTY_BILLING_PROFILE, legalName: org.organizationName }
+              }
+            />
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
