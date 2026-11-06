@@ -7,7 +7,12 @@ import { isValidCpfCnpj, onlyDigits } from "./document";
  * descobre pelo CEP.
  */
 export const billingProfileSchema = z.object({
-  legalName: z.string().trim().min(2, "Informe a razão social ou o nome.").max(120, "Nome muito longo (máx. 120)."),
+  // O Asaas recusa nome com uma palavra só ("O campo name é inválido"): exige nome e sobrenome ou razão social.
+  legalName: z
+    .string()
+    .trim()
+    .max(120, "Nome muito longo (máx. 120).")
+    .refine((v) => v.split(/\s+/).filter(Boolean).length >= 2, "Informe o nome completo ou a razão social (ao menos duas palavras)."),
   cpfCnpj: z
     .string()
     .trim()
