@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireOrgContext } from "@/lib/org";
+import { planErrorMessage } from "@/lib/billing/entitlements";
 import { createClient } from "@/lib/supabase/server";
 import { calcularAHPGenerico } from "@/lib/ahp/calculate";
 import { pillarPairIndexes, sliderToSaaty } from "@/lib/ahp/matrix";
@@ -109,6 +110,8 @@ export async function executeAhpRun(modelId: string, sliderValues: number[]): Pr
     if (error.message.includes("insufficient_credits")) {
       return { ok: false, error: "Saldo de créditos insuficiente para rodar esta execução." };
     }
+    const planMessage = planErrorMessage(error.message);
+    if (planMessage) return { ok: false, error: planMessage };
     return { ok: false, error: error.message };
   }
 

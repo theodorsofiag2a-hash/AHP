@@ -2,7 +2,8 @@ import Link from "next/link";
 import { Coins } from "lucide-react";
 import { notFound } from "next/navigation";
 import { requireOrgContext } from "@/lib/org";
-import { getCreditBalance } from "@/lib/credits";
+import { getOrgBillingSummary } from "@/lib/billing/org-plan";
+import { planBlockMessage, pluralSimulations } from "@/lib/billing/plan-summary";
 import { RUN_COST_CREDITS } from "@/lib/credit-cost";
 import { MIN_ALTERNATIVES_TO_RUN, alternativeProgress, incompleteAlternatives } from "@/lib/ahp/readiness";
 import { createClient } from "@/lib/supabase/server";
@@ -47,12 +48,12 @@ export default async function ModelRunPage({
 
   const pillarIds = (pillars ?? []).map((p) => p.id);
 
-  const [{ data: subcriteria }, { data: alternatives }, creditBalance] = await Promise.all([
+  const [{ data: subcriteria }, { data: alternatives }, billing] = await Promise.all([
     pillarIds.length
       ? supabase.from("ahp_subcriteria").select("id").in("pillar_id", pillarIds)
       : Promise.resolve({ data: [] as { id: string }[] }),
     supabase.from("ahp_alternatives").select("id, name").eq("model_id", modelId).order("name"),
-    getCreditBalance(org.organizationId),
+    getOrgBillingSummary(org.organizationId),
   ]);
 
   const subcriterionIds = (subcriteria ?? []).map((s) => s.id);
@@ -65,6 +66,7 @@ export default async function ModelRunPage({
 
   const alternativesList = alternatives ?? [];
   const incomplete = incompleteAlternatives(alternativeProgress(subcriterionIds, alternativesList, scores ?? []));
+  const creditBalance = billing.mode === "legacy" ? billing.creditBalance : 0;
   const creditsLabel = creditBalance === 1 ? "crédito" : "créditos";
 
   let content: React.ReactNode;
@@ -96,7 +98,7 @@ export default async function ModelRunPage({
     content = (
       <Blocked title="Complete as fichas de avaliação antes de gerar o resultado">
         <p className="text-sm text-text-muted">
-          Alternativas sem ficha completa entrariam no ranking com nota zero, e a execução consome crédito.
+          Alternativas sem ficha completa entrariam no ranking com nota zero, e a execução {billing.mode === "plan" ? "conta como uma simulação do seu plano" : "consome crédito"}.
         </p>
         <ul className="flex w-full flex-col divide-y divide-border-subtle text-sm">
           {incomplete.map((alt) => (
@@ -118,7 +120,28 @@ export default async function ModelRunPage({
         </ul>
       </Blocked>
     );
-  } else if (creditBalance < RUN_COST_CREDITS) {
+  } else if (billing.mode === "plan" && !billing.access.usable) {
+    content = (
+      <Blocked title="Seu plano não está ativo">
+        <p className="text-sm text-text-muted">{planBlockMessage(billing.access.reason)}</p>
+        <Link
+          href="/billing"
+          className="text-sm font-medium text-gold-700 underline-offset-4 hover:text-gold-600 hover:underline"
+        >
+          Ver meu plano
+        </Link>
+      </Blocked>
+    );
+  } else if (billing.mode === "plan" && billing.runsRemaining === 0) {
+    content = (
+      <Blocked title="Você usou todas as simulações do plano">
+        <p className="text-sm text-text-muted">
+          O plano {billing.planName} inclui {billing.runsLimit} simulações neste período. Para continuar, fale com a G2A sobre um plano maior.
+        </p>
+        <ContactG2a label="Falar com a G2A" subject="Mais simulações / upgrade de plano (AHP)" organizationSlug={org.organizationSlug} />
+      </Blocked>
+    );
+  } else if (billing.mode === "legacy" && creditBalance < RUN_COST_CREDITS) {
     content = (
       <Blocked title="Você não tem créditos para gerar o resultado">
         <p className="text-sm text-text-muted">
@@ -132,10 +155,29 @@ export default async function ModelRunPage({
       <>
         <p className="flex items-center gap-2 text-sm text-text-muted">
           <Coins className="h-4 w-4 text-gold-600" />
-          Saldo: <strong className="text-text-primary">{creditBalance} {creditsLabel}</strong> · esta execução usa{" "}
-          {RUN_COST_CREDITS}.
+          {billing.mode === "plan" ? (
+            <>
+              Plano {billing.planName} ·{" "}
+              <strong className="text-text-primary">
+                {billing.runsRemaining === null ? "simulações ilimitadas" : `${pluralSimulations(billing.runsRemaining)} restantes`}
+              </strong>
+            </>
+          ) : (
+            <>
+              Saldo: <strong className="text-text-primary">{creditBalance} {creditsLabel}</strong> · esta execução usa{" "}
+              {RUN_COST_CREDITS}.
+            </>
+          )}
         </p>
-        <PairwiseSliders modelId={model.id} pillars={pillars} creditBalance={creditBalance} />
+        <PairwiseSliders
+          modelId={model.id}
+          pillars={pillars}
+          usage={
+            billing.mode === "plan"
+              ? { kind: "plan", runsRemaining: billing.runsRemaining }
+              : { kind: "credits", balance: creditBalance }
+          }
+        />
       </>
     );
   }

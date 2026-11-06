@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Layers, ArrowRight, Boxes, Coins, Activity } from "lucide-react";
 import { requireOrgContext } from "@/lib/org";
-import { getCreditBalance } from "@/lib/credits";
+import { getOrgBillingSummary } from "@/lib/billing/org-plan";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
 import { ContactG2a } from "@/components/layout/contact-g2a";
@@ -14,7 +14,7 @@ export default async function DashboardPage() {
   startOfMonth.setDate(1);
   startOfMonth.setHours(0, 0, 0, 0);
 
-  const [{ data: models }, { count: modelsCount }, creditBalance, { count: runsThisMonth }] = await Promise.all([
+  const [{ data: models }, { count: modelsCount }, billing, { count: runsThisMonth }] = await Promise.all([
     supabase
       .from("ahp_models")
       .select("id, name, slug, updated_at")
@@ -25,7 +25,7 @@ export default async function DashboardPage() {
       .from("ahp_models")
       .select("id", { count: "exact", head: true })
       .eq("organization_id", org.organizationId),
-    getCreditBalance(org.organizationId),
+    getOrgBillingSummary(org.organizationId),
     supabase
       .from("ahp_runs")
       .select("id", { count: "exact", head: true })
@@ -35,7 +35,14 @@ export default async function DashboardPage() {
 
   const kpis = [
     { label: "Modelos ativos", value: modelsCount ?? 0, icon: Boxes, href: "/models" },
-    { label: "Créditos restantes", value: creditBalance, icon: Coins, href: "/billing" },
+    billing.mode === "plan"
+      ? {
+          label: "Simulações restantes",
+          value: billing.access.usable ? (billing.runsRemaining ?? "Ilimitadas") : "Plano inativo",
+          icon: Coins,
+          href: "/billing",
+        }
+      : { label: "Créditos restantes", value: billing.creditBalance, icon: Coins, href: "/billing" },
     { label: "Execuções este mês", value: runsThisMonth ?? 0, icon: Activity, href: null },
   ];
 
