@@ -81,6 +81,7 @@ export async function startPlanPurchase(input: {
     .select("id")
     .eq("organization_id", org.organizationId)
     .in("status", ["active", "past_due", "suspended"])
+    .gt("valid_until", new Date().toISOString())
     .limit(1)
     .maybeSingle();
   if (openContract) {

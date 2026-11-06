@@ -179,6 +179,17 @@ async function handlePaymentEvent(admin: Admin, asaas: AsaasClient, envelope: As
   // Sem ignoreDuplicates: reprocessar atualiza o espelho. `applied_at` fica fora do upsert, então é preservado.
   const { error } = await admin.from("asaas_payments").upsert(row, { onConflict: "asaas_payment_id" });
   if (error) throw error;
+
+  // Aplica o efeito sobre o plano (ativa, marca em atraso, suspende). Idempotente no banco; qualquer erro
+  // real vira exceção e deixa o evento FAILED para reprocessar.
+  const { data: applied, error: applyError } = await admin.rpc("apply_asaas_payment", { p_asaas_payment_id: payment.id });
+  if (applyError) throw new Error(`apply_asaas_payment: ${applyError.message}`);
+  if (applied === "activated") {
+    console.info("[asaas] plano ativado pelo pagamento", payment.id);
+  } else if (applied === "suspended") {
+    // Estorno/chargeback: a G2A precisa saber (a tela admin de eventos, na Etapa 10, lista estes casos).
+    console.error("[asaas][ALERTA] plano suspenso por estorno/chargeback", payment.id, payment.status);
+  }
 }
 
 async function findOrderByCheckout(admin: Admin, checkoutId: string): Promise<OrderLink | null> {

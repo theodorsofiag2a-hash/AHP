@@ -3,15 +3,16 @@
 import { ReactNode, useState } from "react";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
+import type { OrgBillingSummary } from "@/lib/billing/plan-summary";
 
 export function AppShell({
   organizationName,
-  creditBalance,
+  billing,
   userEmail,
   children,
 }: {
   organizationName: string;
-  creditBalance: number;
+  billing: OrgBillingSummary;
   userEmail: string | null;
   children: ReactNode;
 }) {
@@ -23,7 +24,7 @@ export function AppShell({
       <div className="flex flex-1 flex-col">
         <Topbar
           organizationName={organizationName}
-          creditBalance={creditBalance}
+          billing={billing}
           userEmail={userEmail}
           onMenuClick={() => setSidebarOpen(true)}
         />

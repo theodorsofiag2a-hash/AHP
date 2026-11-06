@@ -1,6 +1,8 @@
 import { Coins, ExternalLink, Handshake } from "lucide-react";
 import { requireOrgContext } from "@/lib/org";
 import { createClient } from "@/lib/supabase/server";
+import { getOrgBillingSummary } from "@/lib/billing/org-plan";
+import { CurrentPlanCard } from "@/components/billing/current-plan-card";
 import { isBillingEnabledFor } from "@/lib/billing/config";
 import { isAsaasCheckoutLink } from "@/lib/billing/purchase";
 import { CheckoutReturnBanner, type CheckoutReturn } from "@/components/billing/checkout-return-banner";
@@ -17,6 +19,10 @@ const RETURN_STATUSES: readonly CheckoutReturn[] = ["sucesso", "cancelado", "exp
 // Pedido aguardando pagamento por mais que isto é tratado como esquecido (checkout vale 60 min).
 const OPEN_ORDER_MAX_AGE_MS = 90 * 60_000;
 
+function nowIso(): string {
+  return new Date().toISOString();
+}
+
 function openOrderCutoffIso(): string {
   return new Date(Date.now() - OPEN_ORDER_MAX_AGE_MS).toISOString();
 }
@@ -28,12 +34,13 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
     getCreditTransactions(org.organizationId),
   ]);
 
+  const summary = await getOrgBillingSummary(org.organizationId);
   const billingEnabled = isBillingEnabledFor(org.organizationSlug);
   const { checkout } = await searchParams;
   const returnStatus = RETURN_STATUSES.find((value) => value === checkout) ?? null;
 
   let block: PurchaseBlock = null;
-  let planActive = false;
+  const planActive = summary.mode === "plan" && summary.access.usable;
   let openOrder: { url: string; planName: string } | null = null;
 
   if (billingEnabled) {
@@ -46,6 +53,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
         .select("status")
         .eq("organization_id", org.organizationId)
         .in("status", ["active", "past_due", "suspended"])
+        .gt("valid_until", nowIso())
         .limit(1)
         .maybeSingle(),
       isAdmin
@@ -64,7 +72,6 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
         : Promise.resolve({ data: null }),
     ]);
 
-    planActive = contract?.status === "active" || contract?.status === "past_due";
 
     const orderPlan = Array.isArray(order?.plans) ? order?.plans[0] : order?.plans;
     if (order && isAsaasCheckoutLink(order.checkout_url)) {
@@ -102,17 +109,21 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Card>
-          <CardContent className="flex items-center gap-4 py-6">
-            <div className="icon-badge-gold h-12 w-12">
-              <Coins className="h-6 w-6" />
-            </div>
-            <div>
-              <p className="text-3xl font-semibold tabular-nums">{balance}</p>
-              <p className="text-sm text-text-muted">{balance === 1 ? "crédito disponível" : "créditos disponíveis"}</p>
-            </div>
-          </CardContent>
-        </Card>
+        {summary.mode === "plan" ? (
+          <CurrentPlanCard summary={summary} />
+        ) : (
+          <Card>
+            <CardContent className="flex items-center gap-4 py-6">
+              <div className="icon-badge-gold h-12 w-12">
+                <Coins className="h-6 w-6" />
+              </div>
+              <div>
+                <p className="text-3xl font-semibold tabular-nums">{balance}</p>
+                <p className="text-sm text-text-muted">{balance === 1 ? "crédito disponível" : "créditos disponíveis"}</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardContent className="flex items-center gap-4 py-6">

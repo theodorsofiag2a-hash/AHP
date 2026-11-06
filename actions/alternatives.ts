@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { planErrorMessage } from "@/lib/billing/entitlements";
 
 export type CreateAlternativeState = { error?: string };
 
@@ -24,6 +25,8 @@ export async function createAlternative(
     .single();
 
   if (error?.code === "23505") return { error: "Já existe uma alternativa com esse nome neste modelo." };
+  const planMessage = planErrorMessage(error?.message);
+  if (planMessage) return { error: planMessage };
   if (error || !data) return { error: "Não foi possível criar a alternativa. Tente novamente." };
 
   redirect(`/models/${modelId}/alternatives/${data.id}`);

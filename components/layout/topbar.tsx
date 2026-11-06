@@ -5,15 +5,16 @@ import Link from "next/link";
 import { Coins, LogOut, Menu, Settings, ChevronDown } from "lucide-react";
 import { signOut } from "@/actions/auth";
 import { Badge } from "@/components/ui/badge";
+import { planBadge, type OrgBillingSummary } from "@/lib/billing/plan-summary";
 
 export function Topbar({
   organizationName,
-  creditBalance,
+  billing,
   userEmail,
   onMenuClick,
 }: {
   organizationName: string;
-  creditBalance: number;
+  billing: OrgBillingSummary;
   userEmail: string | null;
   onMenuClick: () => void;
 }) {
@@ -79,10 +80,22 @@ export function Topbar({
       </div>
 
       <Link href="/billing">
-        <Badge variant="gold" className="cursor-pointer">
-          <Coins className="h-3 w-3" />
-          {creditBalance} {creditBalance === 1 ? "crédito" : "créditos"}
-        </Badge>
+        {billing.mode === "plan" ? (
+          (() => {
+            const badge = planBadge(billing);
+            return (
+              <Badge variant={badge.tone} className="cursor-pointer">
+                <Coins className="h-3 w-3" />
+                {badge.label}
+              </Badge>
+            );
+          })()
+        ) : (
+          <Badge variant="gold" className="cursor-pointer">
+            <Coins className="h-3 w-3" />
+            {billing.creditBalance} {billing.creditBalance === 1 ? "crédito" : "créditos"}
+          </Badge>
+        )}
       </Link>
     </header>
   );
