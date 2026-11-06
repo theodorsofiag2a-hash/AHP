@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { CalendarClock, FolderKanban, Infinity as InfinityIcon, Repeat } from "lucide-react";
 import { ContactG2a } from "@/components/layout/contact-g2a";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +12,16 @@ import {
   type Plan,
 } from "@/lib/plans";
 
-export function PlanCard({ plan, organizationSlug }: { plan: Plan; organizationSlug: string }) {
+export function PlanCard({
+  plan,
+  organizationSlug,
+  action,
+}: {
+  plan: Plan;
+  organizationSlug: string;
+  /** Substitui o botão de contato (ex.: botão de compra online quando a cobrança está ligada). */
+  action?: ReactNode;
+}) {
   const installment = installmentValue(plan.priceBrl, plan.maxInstallments);
   const unlimited = plan.simulationLimit === null;
 
@@ -50,12 +60,14 @@ export function PlanCard({ plan, organizationSlug }: { plan: Plan; organizationS
         </ul>
 
         <div className="mt-auto pt-1">
-          <ContactG2a
-            size="sm"
-            label="Contratar"
-            subject={`Contratar plano ${plan.name} (${plan.code}) — AHP`}
-            organizationSlug={organizationSlug}
-          />
+          {action ?? (
+            <ContactG2a
+              size="sm"
+              label="Contratar"
+              subject={`Contratar plano ${plan.name} (${plan.code}) — AHP`}
+              organizationSlug={organizationSlug}
+            />
+          )}
         </div>
       </CardContent>
     </Card>
