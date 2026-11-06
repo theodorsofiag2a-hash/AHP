@@ -64,6 +64,12 @@ describe("dados de cobrança", () => {
     expect(billingProfileSchema.safeParse({ ...profile, postalCode: "8901000" }).success).toBe(false);
   });
 
+  it("nome precisa ter ao menos duas palavras (o Asaas recusa uma só)", () => {
+    expect(billingProfileSchema.safeParse({ ...profile, legalName: "theodorsofiag2a" }).success).toBe(false);
+    expect(billingProfileSchema.safeParse({ ...profile, legalName: "Empresa Ltda" }).success).toBe(true);
+    expect(billingProfileSchema.safeParse({ ...profile, legalName: "  Maria  Silva " }).success).toBe(true);
+  });
+
   it("complemento é opcional; o resto é obrigatório", () => {
     expect(billingProfileSchema.safeParse({ ...profile, province: "" }).success).toBe(false);
     expect(billingProfileSchema.safeParse({ ...profile, complement: "" }).success).toBe(true);

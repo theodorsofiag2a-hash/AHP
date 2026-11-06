@@ -164,7 +164,12 @@ export async function startPlanPurchase(input: {
     await failOrder();
     if (err instanceof AsaasApiError) {
       // Códigos e descrições do Asaas não trazem dado pessoal; ajudam a diagnosticar.
+      const details = err.errors.map((e) => e.description).filter(Boolean).join(" ");
       console.error("[billing] Asaas recusou o checkout", err.status, err.errors.map((e) => `${e.code}: ${e.description}`).join("; "));
+      // 400 = dado recusado (ex.: nome, CEP): o usuário consegue corrigir em Configurações.
+      if (err.status === 400 && details) {
+        return { ok: false, error: `O Asaas recusou os dados de cobrança: ${details.slice(0, 200)} Revise-os em Configurações da organização.` };
+      }
     } else {
       console.error("[billing] falha ao criar checkout", err instanceof Error ? err.message : err);
     }
