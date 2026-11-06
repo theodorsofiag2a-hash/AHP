@@ -31,6 +31,12 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // As fontes dos gráficos do relatório são lidas em tempo de execução (fs): sem isso o Next não as inclui no deploy.
+  outputFileTracingIncludes: {
+    "/models/[modelId]/run/[runId]/report": ["./lib/report/fonts/**/*"],
+  },
+  // O resvg é binário nativo: não pode ser empacotado.
+  serverExternalPackages: ["@resvg/resvg-js"],
   async headers() {
     return [
       {

@@ -7,6 +7,8 @@ import { RankingChart } from "@/components/ahp/ranking-chart";
 import { AhpRadarChart } from "@/components/ahp/radar-chart";
 import { RankingTable } from "@/components/ahp/ranking-table";
 import { ExportCsvButton } from "@/components/ahp/export-csv-button";
+import { GenerateReportCard } from "@/components/ahp/generate-report-card";
+import { reportAppliesToModel } from "@/lib/report/applies";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -159,6 +161,15 @@ export default async function RunResultsPage({
           </CardContent>
         </Card>
       </div>
+
+      {reportAppliesToModel(model.name) && (
+        <GenerateReportCard
+          modelId={model.id}
+          runId={run.id}
+          defaultClientName={org.organizationName}
+          defaultDocumentNumber={`AHP-${new Date(run.created_at).getFullYear()}-${run.id.slice(0, 6).toUpperCase()}`}
+        />
+      )}
     </div>
   );
 }
