@@ -1,4 +1,3 @@
-import type { GateValues } from "@/lib/gates";
 import type { GridBus } from "@/lib/grid/types";
 
 /**
@@ -16,12 +15,9 @@ export interface RunSnapshot {
   alternatives: {
     id: string;
     name: string;
-    /** Reprovado em algum filtro eliminatório: não entra no ranking nem tem notas na foto. */
-    eliminated: boolean;
     powerMw: number | null;
-    gates: GateValues;
     bus: GridBus | null;
-    /** subcriterionId -> escolha feita na ficha (vazio para eliminados). */
+    /** subcriterionId -> escolha feita na ficha. */
     selections: Record<string, { scaleId: string; scaleDescription: string; score: number }>;
   }[];
 }
@@ -34,9 +30,7 @@ interface SnapshotInput {
   alternatives: {
     id: string;
     name: string;
-    eliminated: boolean;
     powerMw: number | null;
-    gates: GateValues;
     busId: string | null;
   }[];
   scores: { alternative_id: string; subcriterion_id: string; scale_id: string; score_value: number | string }[];
@@ -60,24 +54,20 @@ export function buildRunSnapshot(input: SnapshotInput): RunSnapshot {
     alternatives: input.alternatives.map((alt) => ({
       id: alt.id,
       name: alt.name,
-      eliminated: alt.eliminated,
       powerMw: alt.powerMw,
-      gates: alt.gates,
       bus: alt.busId ? (busById.get(alt.busId) ?? null) : null,
-      selections: alt.eliminated
-        ? {}
-        : Object.fromEntries(
-            input.scores
-              .filter((sc) => sc.alternative_id === alt.id)
-              .map((sc) => [
-                sc.subcriterion_id,
-                {
-                  scaleId: sc.scale_id,
-                  scaleDescription: scaleById.get(sc.scale_id) ?? "",
-                  score: Number(sc.score_value),
-                },
-              ])
-          ),
+      selections: Object.fromEntries(
+        input.scores
+          .filter((sc) => sc.alternative_id === alt.id)
+          .map((sc) => [
+            sc.subcriterion_id,
+            {
+              scaleId: sc.scale_id,
+              scaleDescription: scaleById.get(sc.scale_id) ?? "",
+              score: Number(sc.score_value),
+            },
+          ])
+      ),
     })),
   };
 }

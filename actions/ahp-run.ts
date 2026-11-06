@@ -7,7 +7,6 @@ import { calcularAHPGenerico } from "@/lib/ahp/calculate";
 import { pillarPairIndexes, sliderToSaaty } from "@/lib/ahp/matrix";
 import { MIN_ALTERNATIVES_TO_RUN, alternativeProgress, incompleteAlternatives } from "@/lib/ahp/readiness";
 import type { AhpAlternativeInput, AhpPillarInput } from "@/lib/ahp/types";
-import { GATE_COLUMNS, isEliminated, toGateValues, type GateRow } from "@/lib/gates";
 import { GRID_BUS_COLUMNS, toGridBus, type GridBusRow } from "@/lib/grid/types";
 import { buildRunSnapshot } from "@/lib/report/snapshot";
 
@@ -19,7 +18,7 @@ export async function executeAhpRun(modelId: string, sliderValues: number[]): Pr
 
   const { data: model } = await supabase
     .from("ahp_models")
-    .select("id, name, report_template")
+    .select("id, name")
     .eq("id", modelId)
     .eq("organization_id", org.organizationId)
     .maybeSingle();
@@ -45,26 +44,13 @@ export async function executeAhpRun(modelId: string, sliderValues: number[]): Pr
 
   const { data: alternativesRaw } = await supabase
     .from("ahp_alternatives")
-    .select(`id, name, power_mw, bus_id, ${GATE_COLUMNS}`)
+    .select("id, name, power_mw, bus_id")
     .eq("model_id", modelId);
-  const allAlternatives = alternativesRaw ?? [];
-  if (allAlternatives.length < MIN_ALTERNATIVES_TO_RUN) {
-    return {
-      ok: false,
-      error: `Cadastre ao menos ${MIN_ALTERNATIVES_TO_RUN} alternativas para rodar a matriz.`,
-    };
-  }
-
-  // Filtros eliminatórios (só em modelos de projeto): quem reprova fica fora do ranking.
-  const useGates = model.report_template === "bess_project";
-  const eliminatedIds = new Set(
-    useGates ? allAlternatives.filter((a) => isEliminated(a as GateRow)).map((a) => a.id) : []
-  );
-  const alternatives = allAlternatives.filter((a) => !eliminatedIds.has(a.id));
+  const alternatives = alternativesRaw ?? [];
   if (alternatives.length < MIN_ALTERNATIVES_TO_RUN) {
     return {
       ok: false,
-      error: `Só ${alternatives.length} projeto(s) passaram nos filtros eliminatórios. É preciso ao menos ${MIN_ALTERNATIVES_TO_RUN} para comparar.`,
+      error: `Cadastre ao menos ${MIN_ALTERNATIVES_TO_RUN} alternativas para rodar a matriz.`,
     };
   }
 
@@ -119,6 +105,7 @@ export async function executeAhpRun(modelId: string, sliderValues: number[]): Pr
     pillar_scores_radar: pillars.map((pillar, i) => ({ pillarId: pillar.id, value: r.pillarScoresRadar[i] })),
   }));
 
+  // "Foto" da rodada, usada só pelo relatório (não muda nada na AHP).
   const scaleIds = Array.from(new Set(scores.map((sc) => sc.scale_id)));
   const { data: scalesRaw } = scaleIds.length
     ? await supabase.from("ahp_scales").select("id, description").in("id", scaleIds)
@@ -127,7 +114,7 @@ export async function executeAhpRun(modelId: string, sliderValues: number[]): Pr
     .from("ahp_subcriteria")
     .select("id, pillar_id, name, weight_pct")
     .in("pillar_id", pillarIds);
-  const busIds = Array.from(new Set(allAlternatives.map((a) => a.bus_id).filter((id): id is string => !!id)));
+  const busIds = Array.from(new Set(alternatives.map((a) => a.bus_id).filter((id): id is string => !!id)));
   const { data: busRows } = busIds.length
     ? await supabase.from("grid_buses").select(GRID_BUS_COLUMNS).in("id", busIds)
     : { data: [] };
@@ -137,12 +124,10 @@ export async function executeAhpRun(modelId: string, sliderValues: number[]): Pr
     pillars: pillars.map((p) => ({ id: p.id, name: p.name })),
     subcriteria: subcriteriaNamed ?? [],
     scales: scalesRaw ?? [],
-    alternatives: allAlternatives.map((a) => ({
+    alternatives: alternatives.map((a) => ({
       id: a.id,
       name: a.name,
-      eliminated: eliminatedIds.has(a.id),
       powerMw: a.power_mw != null ? Number(a.power_mw) : null,
-      gates: toGateValues(a as GateRow),
       busId: a.bus_id,
     })),
     scores: scores as { alternative_id: string; subcriterion_id: string; scale_id: string; score_value: number }[],

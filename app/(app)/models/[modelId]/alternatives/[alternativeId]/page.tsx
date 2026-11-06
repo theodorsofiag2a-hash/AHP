@@ -6,8 +6,6 @@ import { requireOrgContext } from "@/lib/org";
 import { createClient } from "@/lib/supabase/server";
 import { EvaluationForm, type ConnectionConfig } from "@/components/ahp/evaluation-form";
 import type { AutoSubcriterion } from "@/lib/grid/auto-fill";
-import { GatesCard } from "@/components/ahp/gates-card";
-import { GATE_COLUMNS, toGateValues, type GateRow } from "@/lib/gates";
 import { GRID_BUS_COLUMNS, parseAutoField, parseAutoMatch, toGridBus, type GridBusRow } from "@/lib/grid/types";
 
 export default async function AlternativeEvaluationPage({
@@ -21,7 +19,7 @@ export default async function AlternativeEvaluationPage({
 
   const { data: model } = await supabase
     .from("ahp_models")
-    .select("id, name, report_template")
+    .select("id, name")
     .eq("id", modelId)
     .eq("organization_id", org.organizationId)
     .maybeSingle();
@@ -29,7 +27,7 @@ export default async function AlternativeEvaluationPage({
 
   const { data: alternative } = await supabase
     .from("ahp_alternatives")
-    .select(`id, name, bus_id, power_mw, ${GATE_COLUMNS}`)
+    .select("id, name, bus_id, power_mw")
     .eq("id", alternativeId)
     .eq("model_id", modelId)
     .maybeSingle();
@@ -131,10 +129,6 @@ export default async function AlternativeEvaluationPage({
         <h1 className="text-page-title">{alternative.name}</h1>
         <p className="text-sm text-text-muted">Ficha de avaliação — {model.name}</p>
       </div>
-
-      {model.report_template === "bess_project" && (
-        <GatesCard modelId={modelId} alternativeId={alternativeId} initialValues={toGateValues(alternative as GateRow)} />
-      )}
 
       {assembledPillars.length === 0 ? (
         <div className="flex flex-col items-start gap-3">

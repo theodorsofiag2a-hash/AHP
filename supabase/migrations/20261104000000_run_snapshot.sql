@@ -1,15 +1,5 @@
--- Filtros eliminatórios (go/no-go) por alternativa e "foto" dos dados de cada execução.
---
--- Filtros (Premissário R1 / seção 11 do relatório): true = atende, false = não atende,
--- null = pendente. Quem não atende a qualquer filtro fica fora do ranking.
--- Foto (inputs_snapshot): o que foi usado na rodada (notas, escalas, filtros, conexão),
+-- "Foto" dos dados de cada execução (inputs_snapshot): o que foi usado na rodada (notas, escalas, conexão),
 -- para o relatório reproduzir a execução mesmo que a ficha seja editada depois.
-
-alter table public.ahp_alternatives
-  add column if not exists gate_rte boolean,
-  add column if not exists gate_deadline boolean,
-  add column if not exists gate_auction boolean,
-  add column if not exists gate_technical boolean;
 
 alter table public.ahp_runs
   add column if not exists inputs_snapshot jsonb;

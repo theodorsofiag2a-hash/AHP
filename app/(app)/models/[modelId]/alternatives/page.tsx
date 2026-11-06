@@ -10,7 +10,6 @@ import { CreateAlternativeForm } from "@/components/ahp/create-alternative-form"
 import { Badge } from "@/components/ui/badge";
 import { GRID_BUS_COLUMNS, toGridBus, type GridBusRow } from "@/lib/grid/types";
 import { assessViability } from "@/lib/grid/viability";
-import { GATE_COLUMNS, assessGates, toGateValues, type GateRow } from "@/lib/gates";
 
 const VIABILITY_BADGE = {
   ok: { label: "Conexão viável", variant: "success" },
@@ -29,7 +28,7 @@ export default async function AlternativesPage({
 
   const { data: model } = await supabase
     .from("ahp_models")
-    .select("id, name, report_template")
+    .select("id, name")
     .eq("id", modelId)
     .eq("organization_id", org.organizationId)
     .maybeSingle();
@@ -37,7 +36,7 @@ export default async function AlternativesPage({
 
   const { data: alternatives } = await supabase
     .from("ahp_alternatives")
-    .select(`id, name, updated_at, power_mw, ${GATE_COLUMNS}, bus:grid_buses(${GRID_BUS_COLUMNS})`)
+    .select(`id, name, updated_at, power_mw, bus:grid_buses(${GRID_BUS_COLUMNS})`)
     .eq("model_id", modelId)
     .order("updated_at", { ascending: false });
 
@@ -69,7 +68,6 @@ export default async function AlternativesPage({
             const busRow = alt.bus as unknown as GridBusRow | null;
             const bus = busRow ? toGridBus(busRow) : null;
             const viability = bus ? assessViability(bus, alt.power_mw != null ? Number(alt.power_mw) : null) : null;
-            const gates = model.report_template === "bess_project" ? assessGates(toGateValues(alt as GateRow)) : null;
             return (
               <Card key={alt.id}>
                 <CardContent className="flex items-center justify-between gap-3 py-3">
@@ -84,8 +82,6 @@ export default async function AlternativesPage({
                       </span>
                     )}
                   </Link>
-                  {gates?.status === "eliminated" && <Badge variant="danger">Fora do ranking</Badge>}
-                  {gates?.status === "pending" && <Badge variant="neutral">Filtros pendentes</Badge>}
                   {viability && (
                     <Badge variant={VIABILITY_BADGE[viability.status].variant}>{VIABILITY_BADGE[viability.status].label}</Badge>
                   )}
