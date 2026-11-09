@@ -75,18 +75,8 @@ export async function startPlanPurchase(input: {
     return { ok: false, error: "Preencha os dados de cobrança da organização antes de contratar." };
   }
 
-  // Esta etapa cobre a primeira contratação. Quem já tem plano em andamento renova por outro fluxo.
-  const { data: openContract } = await admin
-    .from("organization_plans")
-    .select("id")
-    .eq("organization_id", org.organizationId)
-    .in("status", ["active", "past_due", "suspended"])
-    .gt("valid_until", new Date().toISOString())
-    .limit(1)
-    .maybeSingle();
-  if (openContract) {
-    return { ok: false, error: "Sua organização já possui um plano. Para renovar ou trocar, fale com a G2A." };
-  }
+  // Quem já tem plano pode contratar outro: quando o pagamento for confirmado, apply_asaas_payment soma os
+  // limites ao plano atual e mantém o vencimento do maior plano.
 
   // Libera pedidos esquecidos (falha no meio do caminho ou evento de expiração que não chegou).
   const now = Date.now();
