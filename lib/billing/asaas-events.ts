@@ -186,6 +186,8 @@ async function handlePaymentEvent(admin: Admin, asaas: AsaasClient, envelope: As
   if (applyError) throw new Error(`apply_asaas_payment: ${applyError.message}`);
   if (applied === "activated") {
     console.info("[asaas] plano ativado pelo pagamento", payment.id);
+  } else if (applied === "merged") {
+    console.info("[asaas] plano somado ao plano atual pelo pagamento", payment.id);
   } else if (applied === "suspended") {
     // Estorno/chargeback: a G2A precisa saber (a tela admin de eventos, na Etapa 10, lista estes casos).
     console.error("[asaas][ALERTA] plano suspenso por estorno/chargeback", payment.id, payment.status);

@@ -11,16 +11,15 @@ import { Dialog } from "@/components/ui/dialog";
 import { MODALITIES, PURCHASE_MODALITIES, type PurchaseModality } from "@/lib/billing/purchase";
 import { formatBrl, installmentValue, type Plan } from "@/lib/plans";
 
-export type PurchaseBlock = "no_profile" | "not_admin" | "has_plan" | "open_order" | null;
+export type PurchaseBlock = "no_profile" | "not_admin" | "open_order" | null;
 
 const BLOCK_MESSAGES: Record<Exclude<PurchaseBlock, null>, string> = {
   no_profile: "Antes de contratar, preencha os dados de cobrança da organização.",
   not_admin: "Apenas proprietários e administradores podem contratar um plano.",
-  has_plan: "Sua organização já possui um plano. Para renovar ou trocar, fale com a G2A.",
   open_order: "Você já tem um pagamento em andamento. Conclua-o no aviso acima.",
 };
 
-export function PurchaseButton({ plan, block }: { plan: Plan; block: PurchaseBlock }) {
+export function PurchaseButton({ plan, block, currentPlanName }: { plan: Plan; block: PurchaseBlock; currentPlanName?: string | null }) {
   const [open, setOpen] = useState(false);
   const [modality, setModality] = useState<PurchaseModality>("pix");
   const [accepted, setAccepted] = useState(false);
@@ -71,6 +70,12 @@ export function PurchaseButton({ plan, block }: { plan: Plan; block: PurchaseBlo
         description={`${formatBrl(plan.priceBrl)} · válido por ${plan.validityMonths} meses`}
       >
         <div className="flex flex-col gap-4">
+          {currentPlanName && (
+            <p className="rounded-lg border border-gold-300 bg-gold-soft p-3 text-sm text-text-primary">
+              Você já tem o plano {currentPlanName}. Quando o pagamento deste plano for confirmado, os limites de
+              alternativas e simulações são somados aos do plano atual, e o vencimento passa a ser o do maior plano.
+            </p>
+          )}
           <fieldset className="flex flex-col gap-2" disabled={isPending}>
             <legend className="mb-1 text-sm font-medium text-text-primary">Como você quer pagar?</legend>
             {PURCHASE_MODALITIES.map((value) => {

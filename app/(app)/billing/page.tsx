@@ -19,10 +19,6 @@ const RETURN_STATUSES: readonly CheckoutReturn[] = ["sucesso", "cancelado", "exp
 // Pedido aguardando pagamento por mais que isto é tratado como esquecido (checkout vale 60 min).
 const OPEN_ORDER_MAX_AGE_MS = 90 * 60_000;
 
-function nowIso(): string {
-  return new Date().toISOString();
-}
-
 function openOrderCutoffIso(): string {
   return new Date(Date.now() - OPEN_ORDER_MAX_AGE_MS).toISOString();
 }
@@ -47,15 +43,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
     const supabase = await createClient();
     const isAdmin = org.role === "owner" || org.role === "admin";
 
-    const [{ data: contract }, { data: order }, { data: profile }] = await Promise.all([
-      supabase
-        .from("organization_plans")
-        .select("status")
-        .eq("organization_id", org.organizationId)
-        .in("status", ["active", "past_due", "suspended"])
-        .gt("valid_until", nowIso())
-        .limit(1)
-        .maybeSingle(),
+    const [{ data: order }, { data: profile }] = await Promise.all([
       isAdmin
         ? supabase
             .from("plan_orders")
@@ -79,7 +67,6 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
     }
 
     if (!isAdmin) block = "not_admin";
-    else if (contract) block = "has_plan";
     else if (openOrder) block = "open_order";
     else if (!profile) block = "no_profile";
   }
@@ -159,7 +146,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
               key={plan.code}
               plan={plan}
               organizationSlug={org.organizationSlug}
-              action={billingEnabled ? <PurchaseButton plan={plan} block={block} /> : undefined}
+              action={billingEnabled ? <PurchaseButton plan={plan} block={block} currentPlanName={planActive && summary.mode === "plan" ? summary.planName : null} /> : undefined}
             />
           ))}
         </div>
