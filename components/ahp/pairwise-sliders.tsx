@@ -26,14 +26,17 @@ function sliderLabel(value: number, pillarA: string, pillarB: string) {
   return { text: `${pillarB} é ${factor}x mais importante`, tone: "right" as const };
 }
 
+/** Como a execução é cobrada: crédito (regime antigo) ou simulação do plano contratado. */
+export type PairwiseUsage = { kind: "credits"; balance: number } | { kind: "plan"; runsRemaining: number | null };
+
 export function PairwiseSliders({
   modelId,
   pillars,
-  creditBalance,
+  usage,
 }: {
   modelId: string;
   pillars: PillarOption[];
-  creditBalance: number;
+  usage: PairwiseUsage;
 }) {
   const pairs = useMemo(() => pillarPairIndexes(pillars.length), [pillars.length]);
   const [values, setValues] = useState<number[]>(() => pairs.map(() => 0));
@@ -150,11 +153,26 @@ export function PairwiseSliders({
         open={confirmOpen}
         onClose={() => !isPending && setConfirmOpen(false)}
         title="Gerar resultado?"
-        description={`Esta execução usa ${RUN_COST_CREDITS} crédito e não pode ser desfeita.`}
+        description={
+          usage.kind === "credits"
+            ? `Esta execução usa ${RUN_COST_CREDITS} crédito e não pode ser desfeita.`
+            : "Esta execução conta como uma simulação do seu plano e não pode ser desfeita."
+        }
       >
         <p className="text-sm text-text-muted">
-          Saldo: {creditBalance} → <strong className="text-text-primary">{creditBalance - RUN_COST_CREDITS}</strong>{" "}
-          {creditBalance - RUN_COST_CREDITS === 1 ? "crédito" : "créditos"}
+          {usage.kind === "credits" ? (
+            <>
+              Saldo: {usage.balance} → <strong className="text-text-primary">{usage.balance - RUN_COST_CREDITS}</strong>{" "}
+              {usage.balance - RUN_COST_CREDITS === 1 ? "crédito" : "créditos"}
+            </>
+          ) : usage.runsRemaining === null ? (
+            <>Seu plano tem simulações ilimitadas.</>
+          ) : (
+            <>
+              Simulações restantes: {usage.runsRemaining} →{" "}
+              <strong className="text-text-primary">{usage.runsRemaining - 1}</strong>
+            </>
+          )}
         </p>
         <div className="mt-5 flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setConfirmOpen(false)} disabled={isPending}>

@@ -2,6 +2,9 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ClipboardList } from "lucide-react";
 import { requireOrgContext } from "@/lib/org";
+import { getOrgBillingSummary } from "@/lib/billing/org-plan";
+import { planBlockMessage } from "@/lib/billing/plan-summary";
+import { ContactG2a } from "@/components/layout/contact-g2a";
 import { createClient } from "@/lib/supabase/server";
 import { ModelTabs } from "@/components/ahp/model-tabs";
 import { DeleteAlternativeButton } from "@/components/ahp/delete-alternative-button";
@@ -25,6 +28,10 @@ export default async function AlternativesPage({
     .maybeSingle();
   if (!model) notFound();
 
+  const billing = await getOrgBillingSummary(org.organizationId);
+  const planBlocked = billing.mode === "plan" && !billing.access.usable;
+  const planFull = billing.mode === "plan" && billing.access.usable && billing.alternativesRemaining === 0;
+
   const { data: alternatives } = await supabase
     .from("ahp_alternatives")
     .select("id, name, updated_at")
@@ -40,7 +47,36 @@ export default async function AlternativesPage({
 
       <ModelTabs modelId={model.id} />
 
-      <CreateAlternativeForm modelId={modelId} />
+      {billing.mode === "plan" && billing.access.usable && (
+        <p className="text-sm text-text-muted">
+          Plano {billing.planName}: <strong className="text-text-primary">{billing.alternativesUsed} de {billing.maxAlternatives}</strong>{" "}
+          alternativas cadastradas na organização.
+        </p>
+      )}
+
+      {planBlocked && billing.mode === "plan" && !billing.access.usable ? (
+        <Card>
+          <CardContent className="flex flex-col items-start gap-2 py-5">
+            <p className="font-medium text-text-primary">Seu plano não está ativo</p>
+            <p className="text-sm text-text-muted">{planBlockMessage(billing.access.reason)}</p>
+            <Link href="/billing" className="text-sm font-medium text-gold-700 underline-offset-4 hover:underline">
+              Ver meu plano
+            </Link>
+          </CardContent>
+        </Card>
+      ) : planFull && billing.mode === "plan" ? (
+        <Card>
+          <CardContent className="flex flex-col items-start gap-2 py-5">
+            <p className="font-medium text-text-primary">Limite de alternativas do plano atingido</p>
+            <p className="text-sm text-text-muted">
+              O plano {billing.planName} permite até {billing.maxAlternatives} alternativas. Para cadastrar mais, fale com a G2A sobre um plano maior.
+            </p>
+            <ContactG2a label="Falar com a G2A" subject="Upgrade de plano — mais alternativas (AHP)" organizationSlug={org.organizationSlug} />
+          </CardContent>
+        </Card>
+      ) : (
+        <CreateAlternativeForm modelId={modelId} />
+      )}
 
       {!alternatives || alternatives.length === 0 ? (
         <Card>
