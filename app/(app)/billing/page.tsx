@@ -14,6 +14,7 @@ import { ContactG2a } from "@/components/layout/contact-g2a";
 import { TransactionHistoryTable } from "@/components/billing/transaction-history-table";
 import { PlanCard } from "@/components/billing/plan-card";
 import { PLANS } from "@/lib/plans";
+import { buildHistoryRows, type PaidOrderInput } from "@/lib/billing/history";
 
 const RETURN_STATUSES: readonly CheckoutReturn[] = ["sucesso", "cancelado", "expirado"];
 // Pedido aguardando pagamento por mais que isto é tratado como esquecido (checkout vale 60 min).
@@ -21,6 +22,29 @@ const OPEN_ORDER_MAX_AGE_MS = 90 * 60_000;
 
 function openOrderCutoffIso(): string {
   return new Date(Date.now() - OPEN_ORDER_MAX_AGE_MS).toISOString();
+}
+
+// Contratações pagas. A leitura é restrita a proprietários e administradores (RLS); para os demais volta vazio.
+async function getPaidOrders(organizationId: string): Promise<PaidOrderInput[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("plan_orders")
+    .select("id, amount_cents, payment_method, installment_count, updated_at, plans(name)")
+    .eq("organization_id", organizationId)
+    .eq("status", "paid")
+    .order("updated_at", { ascending: false })
+    .limit(50);
+  return (data ?? []).map((order) => {
+    const plan = Array.isArray(order.plans) ? order.plans[0] : order.plans;
+    return {
+      id: order.id,
+      planName: plan?.name ?? "",
+      amountCents: order.amount_cents,
+      paymentMethod: order.payment_method as PaidOrderInput["paymentMethod"],
+      installmentCount: order.installment_count,
+      paidAt: order.updated_at,
+    };
+  });
 }
 
 export default async function BillingPage({ searchParams }: { searchParams: Promise<{ checkout?: string | string[] }> }) {
@@ -31,6 +55,8 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
   ]);
 
   const summary = await getOrgBillingSummary(org.organizationId);
+  const paidOrders = await getPaidOrders(org.organizationId);
+  const historyRows = buildHistoryRows(transactions, paidOrders);
   const billingEnabled = isBillingEnabledFor(org.organizationSlug);
   const { checkout } = await searchParams;
   const returnStatus = RETURN_STATUSES.find((value) => value === checkout) ?? null;
@@ -158,10 +184,10 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
       <Card>
         <CardHeader>
           <CardTitle>Histórico</CardTitle>
-          <CardDescription>Todas as movimentações de crédito da sua organização.</CardDescription>
+          <CardDescription>Movimentações de crédito e contratações de plano da sua organização.</CardDescription>
         </CardHeader>
         <CardContent>
-          <TransactionHistoryTable transactions={transactions} />
+          <TransactionHistoryTable rows={historyRows} />
         </CardContent>
       </Card>
     </div>
