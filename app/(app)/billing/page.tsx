@@ -14,7 +14,8 @@ import { ContactG2a } from "@/components/layout/contact-g2a";
 import { TransactionHistoryTable } from "@/components/billing/transaction-history-table";
 import { PlanCard } from "@/components/billing/plan-card";
 import { PLANS } from "@/lib/plans";
-import { buildHistoryRows, type PaidOrderInput } from "@/lib/billing/history";
+import type { PaidOrderInput } from "@/lib/billing/history";
+import { PlanOrdersTable } from "@/components/billing/plan-orders-table";
 
 const RETURN_STATUSES: readonly CheckoutReturn[] = ["sucesso", "cancelado", "expirado"];
 // Pedido aguardando pagamento por mais que isto é tratado como esquecido (checkout vale 60 min).
@@ -56,7 +57,6 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
 
   const summary = await getOrgBillingSummary(org.organizationId);
   const paidOrders = await getPaidOrders(org.organizationId);
-  const historyRows = buildHistoryRows(transactions, paidOrders);
   const billingEnabled = isBillingEnabledFor(org.organizationSlug);
   const { checkout } = await searchParams;
   const returnStatus = RETURN_STATUSES.find((value) => value === checkout) ?? null;
@@ -187,7 +187,18 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
           <CardDescription>Movimentações de crédito e contratações de plano da sua organização.</CardDescription>
         </CardHeader>
         <CardContent>
-          <TransactionHistoryTable rows={historyRows} />
+          {paidOrders.length > 0 && (
+            <div className="mb-6">
+              <h3 className="mb-2 text-sm font-medium text-text-primary">Contratações de plano</h3>
+              <PlanOrdersTable orders={paidOrders} />
+            </div>
+          )}
+          {(paidOrders.length === 0 || transactions.length > 0) && (
+            <>
+              {paidOrders.length > 0 && <h3 className="mb-2 text-sm font-medium text-text-primary">Movimentações de crédito</h3>}
+              <TransactionHistoryTable transactions={transactions} />
+            </>
+          )}
         </CardContent>
       </Card>
     </div>
