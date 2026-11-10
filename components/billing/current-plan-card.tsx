@@ -1,13 +1,33 @@
 import { CalendarClock, FolderKanban, Infinity as InfinityIcon, Repeat, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { CancelRenewalButton } from "@/components/billing/cancel-renewal-button";
+import { PurchaseButton, type PurchaseBlock } from "@/components/billing/purchase-dialog";
 import { PLAN_GRACE_DAYS } from "@/lib/billing/entitlements";
+import { daysUntil, isRenewalWindowOpen } from "@/lib/billing/renewal-window";
+import { PLANS } from "@/lib/plans";
 import { formatDatePt, planBlockMessage, pluralSimulations, type PlanSummary } from "@/lib/billing/plan-summary";
 
 /** Cartão "Seu plano" da página de cobrança: situação, validade, uso e renovação. */
-export function CurrentPlanCard({ summary }: { summary: PlanSummary }) {
+export function CurrentPlanCard({
+  summary,
+  billingEnabled = false,
+  canManage = false,
+  purchaseBlock = null,
+}: {
+  summary: PlanSummary;
+  /** Compra online liberada para esta organização (interruptor de cobrança). */
+  billingEnabled?: boolean;
+  /** Proprietário/administrador: pode renovar e cancelar a renovação. */
+  canManage?: boolean;
+  purchaseBlock?: PurchaseBlock;
+}) {
   const usable = summary.access.usable;
   const pastDue = summary.status === "past_due";
+  const renewalPlan = PLANS.find((plan) => plan.code === summary.planCode) ?? null;
+  const renewalOpen = isRenewalWindowOpen(summary.validUntil);
+  const daysLeft = daysUntil(summary.validUntil);
+  const waitingRenewalCharge = summary.autoRenew && usable && daysLeft < 0;
 
   return (
     <Card>
@@ -59,12 +79,36 @@ export function CurrentPlanCard({ summary }: { summary: PlanSummary }) {
           <li className="flex items-center gap-3">
             <CalendarClock className="h-4 w-4 shrink-0 text-gold-600" aria-hidden="true" />
             <span className="text-text-primary">
-              {summary.autoRenew
-                ? `Renovação automática no cartão em ${formatDatePt(summary.validUntil)}`
-                : `Sem renovação automática: renove antes de ${formatDatePt(summary.validUntil)}`}
+              {waitingRenewalCharge
+                ? "Aguardando a cobrança da renovação no cartão"
+                : summary.autoRenew
+                  ? `Renovação automática no cartão em ${formatDatePt(summary.validUntil)}`
+                  : `Sem renovação automática: renove antes de ${formatDatePt(summary.validUntil)}`}
             </span>
           </li>
         </ul>
+
+        {billingEnabled && canManage && (
+          <div className="flex flex-wrap items-start justify-between gap-3 border-t border-border-subtle pt-4">
+            {summary.autoRenew ? (
+              <>
+                <p className="text-sm text-text-muted">O cartão é cobrado automaticamente a cada 6 meses.</p>
+                <CancelRenewalButton validUntilLabel={formatDatePt(summary.validUntil)} />
+              </>
+            ) : renewalPlan && renewalOpen ? (
+              <>
+                <p className="text-sm text-text-muted">
+                  {daysLeft >= 0
+                    ? `Seu plano vence em ${daysLeft} ${daysLeft === 1 ? "dia" : "dias"}. Renove para continuar.`
+                    : "Seu plano venceu. Renove para voltar a usar."}
+                </p>
+                <PurchaseButton plan={renewalPlan} block={purchaseBlock} renewal />
+              </>
+            ) : (
+              <p className="text-sm text-text-muted">A renovação abre 30 dias antes do vencimento.</p>
+            )}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

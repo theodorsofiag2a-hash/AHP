@@ -1,6 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { AsaasApiError, type AsaasClient } from "../asaas/client";
+import { syncRenewal, markSubscriptionCanceled } from "./renewal";
 import { toCents, type AsaasEnv, type AsaasPayment, type AsaasWebhookEnvelope } from "../asaas/types";
 
 /**
@@ -49,7 +50,7 @@ export function getCheckoutId(envelope: AsaasWebhookEnvelope): string | null {
   return readId(envelope.checkout);
 }
 
-type OrderLink = { orderId: string; organizationId: string; organizationPlanId: string | null };
+type OrderLink = { orderId: string | null; organizationId: string; organizationPlanId: string | null };
 
 /**
  * Linha de asaas_payments a partir da cobrança lida no Asaas. Campos de ligação (pedido/organização) só
@@ -72,7 +73,7 @@ export function buildPaymentRow(payment: AsaasPayment, environment: AsaasEnv, li
     environment,
     ...(link
       ? {
-          order_id: link.orderId,
+          ...(link.orderId ? { order_id: link.orderId } : {}),
           organization_id: link.organizationId,
           ...(link.organizationPlanId ? { organization_plan_id: link.organizationPlanId } : {}),
         }
@@ -150,8 +151,9 @@ async function handleEvent(admin: Admin, asaas: AsaasClient, envelope: AsaasWebh
       return handlePaymentEvent(admin, asaas, envelope);
     case "checkout":
       return handleCheckoutEvent(admin, envelope);
+    case "subscription":
+      return handleSubscriptionEvent(admin, envelope);
     default:
-      // Assinaturas e demais eventos: só ficam registrados por enquanto (Etapas 7 e 8).
       return;
   }
 }
@@ -173,7 +175,10 @@ async function handlePaymentEvent(admin: Admin, asaas: AsaasClient, envelope: As
     throw err;
   }
 
-  const link = payment.checkoutSession ? await findOrderByCheckout(admin, payment.checkoutSession) : null;
+  // Liga a cobrança ao pedido pelo checkout; cobranças de renovação (sem checkout) pela assinatura.
+  const link =
+    (payment.checkoutSession ? await findOrderByCheckout(admin, payment.checkoutSession) : null) ??
+    (payment.subscription ? await findSubscriptionLink(admin, payment.subscription) : null);
   const row = buildPaymentRow(payment, asaas.env, link);
 
   // Sem ignoreDuplicates: reprocessar atualiza o espelho. `applied_at` fica fora do upsert, então é preservado.
@@ -188,10 +193,37 @@ async function handlePaymentEvent(admin: Admin, asaas: AsaasClient, envelope: As
     console.info("[asaas] plano ativado pelo pagamento", payment.id);
   } else if (applied === "merged") {
     console.info("[asaas] plano somado ao plano atual pelo pagamento", payment.id);
+  } else if (applied === "renewed") {
+    console.info("[asaas] plano renovado pelo pagamento", payment.id);
   } else if (applied === "suspended") {
     // Estorno/chargeback: a G2A precisa saber (a tela admin de eventos, na Etapa 10, lista estes casos).
     console.error("[asaas][ALERTA] plano suspenso por estorno/chargeback", payment.id, payment.status);
+  } else if (typeof applied === "string" && applied === "skipped:contract_suspended") {
+    console.error("[asaas][ALERTA] renovação paga, mas o plano está suspenso (não reativa sozinho)", payment.id);
   }
+
+  // Renovação automática: cria a assinatura do pagamento parcelado, mantém uma só ativa e alinha a data.
+  if (typeof applied === "string" && !applied.startsWith("skipped")) {
+    await syncRenewal(admin, asaas, payment);
+  }
+}
+
+async function findSubscriptionLink(admin: Admin, subscriptionId: string): Promise<OrderLink | null> {
+  const { data, error } = await admin
+    .from("plan_subscriptions")
+    .select("organization_id")
+    .eq("asaas_subscription_id", subscriptionId)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? { orderId: null, organizationId: data.organization_id, organizationPlanId: null } : null;
+}
+
+/** Assinatura apagada ou inativada (por nós ou no painel do Asaas): desliga a renovação automática. */
+async function handleSubscriptionEvent(admin: Admin, envelope: AsaasWebhookEnvelope): Promise<void> {
+  if (envelope.event !== "SUBSCRIPTION_DELETED" && envelope.event !== "SUBSCRIPTION_INACTIVATED") return;
+  const subscriptionId = readId(envelope.subscription);
+  if (!subscriptionId) throw new Error(`evento ${envelope.event} sem subscription.id`);
+  await markSubscriptionCanceled(admin, subscriptionId);
 }
 
 async function findOrderByCheckout(admin: Admin, checkoutId: string): Promise<OrderLink | null> {

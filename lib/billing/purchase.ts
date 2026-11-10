@@ -2,7 +2,7 @@ import type { BillingProfile } from "./billing-profile";
 
 /**
  * Modalidades de compra (resultado dos spikes do Sandbox):
- *  - pix: Pix à vista. Sem renovação automática (renova por novo checkout, com lembrete).
+ *  - pix: Pix à vista. Sem renovação automática (renova por novo checkout, pelo botão Renovar).
  *  - card_recurrent: cartão à vista com renovação automática (RECURRENT, a cada 6 meses).
  *  - card_installments: cartão à vista ou em até 3x (DETACHED + INSTALLMENT). A renovação automática é
  *    criada depois, pelo webhook, com o token do cartão (RECURRENT não combina com outros tipos).
@@ -22,7 +22,7 @@ export type ModalityInfo = {
 export const MODALITIES: Record<PurchaseModality, ModalityInfo> = {
   pix: {
     label: "Pix à vista",
-    description: "Pagamento imediato. Ao fim dos 6 meses você recebe um lembrete para renovar.",
+    description: "Pagamento imediato. Perto do vencimento, você renova em Créditos e planos.",
     paymentMethod: "PIX",
     maxInstallments: () => 1,
     autoRenew: false,

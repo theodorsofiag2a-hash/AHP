@@ -57,6 +57,28 @@ describe("plano utilizável (espelha plan_is_usable)", () => {
   });
 });
 
+describe("renovação automática: carência depois do vencimento (espelha plan_is_usable)", () => {
+  it("com renovação automática, vencido há 3 dias ainda usa (cobrança da renovação pendente)", () => {
+    expect(getPlanAccess(plan({ validUntil: days(-3), autoRenew: true }), NOW)).toEqual({ usable: true });
+  });
+
+  it("com renovação automática, vencido há 10 dias ou mais bloqueia", () => {
+    expect(getPlanAccess(plan({ validUntil: days(-10), autoRenew: true }), NOW)).toEqual({ usable: false, reason: "expired" });
+    expect(getPlanAccess(plan({ validUntil: days(-11), autoRenew: true }), NOW)).toEqual({ usable: false, reason: "expired" });
+  });
+
+  it("sem renovação automática, vence na data", () => {
+    expect(getPlanAccess(plan({ validUntil: days(-3), autoRenew: false }), NOW)).toEqual({ usable: false, reason: "expired" });
+    expect(getPlanAccess(plan({ validUntil: days(-3) }), NOW)).toEqual({ usable: false, reason: "expired" });
+  });
+
+  it("renovação recusada: em atraso e vencido, a carência de atraso também vale", () => {
+    const base = { status: "past_due" as const, validUntil: days(-2), autoRenew: true };
+    expect(getPlanAccess(plan({ ...base, pastDueSince: days(-1) }), NOW)).toEqual({ usable: true });
+    expect(getPlanAccess(plan({ ...base, pastDueSince: days(-10) }), NOW)).toEqual({ usable: false, reason: "grace_over" });
+  });
+});
+
 describe("carência de inadimplência", () => {
   it("a carência é de 10 dias, igual ao banco", () => {
     expect(PLAN_GRACE_DAYS).toBe(10);

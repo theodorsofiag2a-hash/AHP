@@ -19,7 +19,18 @@ const BLOCK_MESSAGES: Record<Exclude<PurchaseBlock, null>, string> = {
   open_order: "Você já tem um pagamento em andamento. Conclua-o no aviso acima.",
 };
 
-export function PurchaseButton({ plan, block, currentPlanName }: { plan: Plan; block: PurchaseBlock; currentPlanName?: string | null }) {
+export function PurchaseButton({
+  plan,
+  block,
+  currentPlanName,
+  renewal = false,
+}: {
+  plan: Plan;
+  block: PurchaseBlock;
+  currentPlanName?: string | null;
+  /** true = renovar o plano atual (reinicia o prazo e as simulações), em vez de contratar outro. */
+  renewal?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const [modality, setModality] = useState<PurchaseModality>("pix");
   const [accepted, setAccepted] = useState(false);
@@ -31,7 +42,7 @@ export function PurchaseButton({ plan, block, currentPlanName }: { plan: Plan; b
 
   function handleSubmit() {
     startTransition(async () => {
-      const result = await startPlanPurchase({ planCode: plan.code, modality, acceptedRenewal: accepted });
+      const result = await startPlanPurchase({ planCode: plan.code, modality, acceptedRenewal: accepted, renew: renewal });
       if (!result.ok) {
         toast.error(result.error);
         return;
@@ -45,7 +56,7 @@ export function PurchaseButton({ plan, block, currentPlanName }: { plan: Plan; b
     return (
       <div className="flex flex-col gap-2">
         <Button size="sm" disabled>
-          Contratar
+          {renewal ? "Renovar" : "Contratar"}
         </Button>
         <p className="text-xs text-text-muted">{BLOCK_MESSAGES[block]}</p>
         {block === "no_profile" && (
@@ -60,17 +71,23 @@ export function PurchaseButton({ plan, block, currentPlanName }: { plan: Plan; b
   return (
     <>
       <Button size="sm" onClick={() => setOpen(true)}>
-        Contratar
+        {renewal ? "Renovar plano" : "Contratar"}
       </Button>
 
       <Dialog
         open={open}
         onClose={() => !isPending && setOpen(false)}
-        title={`Contratar plano ${plan.name}`}
+        title={`${renewal ? "Renovar" : "Contratar"} plano ${plan.name}`}
         description={`${formatBrl(plan.priceBrl)} · válido por ${plan.validityMonths} meses`}
       >
         <div className="flex flex-col gap-4">
-          {currentPlanName && (
+          {renewal && (
+            <p className="rounded-lg border border-gold-300 bg-gold-soft p-3 text-sm text-text-primary">
+              A renovação reinicia o plano: mais {plan.validityMonths} meses a partir do vencimento atual, com as
+              simulações contadas do zero e os limites do plano {plan.name}.
+            </p>
+          )}
+          {!renewal && currentPlanName && (
             <p className="rounded-lg border border-gold-300 bg-gold-soft p-3 text-sm text-text-primary">
               Você já tem o plano {currentPlanName}. Quando o pagamento deste plano for confirmado, os limites de
               alternativas e simulações são somados aos do plano atual, e o vencimento passa a ser o do maior plano.
@@ -117,8 +134,8 @@ export function PurchaseButton({ plan, block, currentPlanName }: { plan: Plan; b
               <Checkbox checked={accepted} onChange={(e) => setAccepted(e.target.checked)} disabled={isPending} />
               <span>
                 Concordo que o plano seja renovado automaticamente a cada {plan.validityMonths} meses, com cobrança de{" "}
-                <strong className="tabular-nums">{formatBrl(plan.priceBrl)}</strong> no mesmo cartão, até eu cancelar. Para cancelar a
-                renovação, basta avisar a G2A.
+                <strong className="tabular-nums">{formatBrl(plan.priceBrl)}</strong> no mesmo cartão, até eu cancelar. Posso cancelar a
+                renovação quando quiser em Créditos e planos.
               </span>
             </label>
           )}

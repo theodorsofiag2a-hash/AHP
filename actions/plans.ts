@@ -13,6 +13,8 @@ import {
   buildCheckoutPayload,
   isAsaasCheckoutLink,
 } from "@/lib/billing/purchase";
+import { cancelOrganizationRenewal } from "@/lib/billing/renewal";
+import { isRenewalWindowOpen } from "@/lib/billing/renewal-window";
 import { requireOrgContext } from "@/lib/org";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -37,6 +39,8 @@ export async function startPlanPurchase(input: {
   planCode: string;
   modality: string;
   acceptedRenewal: boolean;
+  /** true = renovar o plano atual (reinicia: 6 meses a partir do vencimento, simulações do zero). */
+  renew?: boolean;
 }): Promise<StartPlanPurchaseResult> {
   const org = await requireOrgContext();
   if (!isBillingEnabledFor(org.organizationSlug)) {
@@ -57,12 +61,30 @@ export async function startPlanPurchase(input: {
 
   const admin = createAdminClient();
 
+  // Renovação: o plano e o preço são os do contrato atual, e só abre perto do vencimento.
+  let orderKind: "initial" | "renewal" = "initial";
+  let renewPlanId: string | null = null;
+  if (input.renew === true) {
+    const { data: current } = await admin
+      .from("organization_plans")
+      .select("status, plan_id, valid_until")
+      .eq("organization_id", org.organizationId)
+      .neq("status", "pending")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!current) return { ok: false, error: "Você ainda não tem um plano para renovar." };
+    if (current.status === "suspended") return { ok: false, error: "Seu plano está suspenso. Fale com a G2A para regularizar." };
+    if (!isRenewalWindowOpen(current.valid_until)) {
+      return { ok: false, error: "A renovação abre 30 dias antes do vencimento do plano." };
+    }
+    orderKind = "renewal";
+    renewPlanId = current.plan_id;
+  }
+
   // O preço vem do banco, nunca do navegador.
-  const { data: plan } = await admin
-    .from("plans")
-    .select("id, code, name, price_cents, max_installments, validity_months, active")
-    .eq("code", planCode)
-    .maybeSingle();
+  const planQuery = admin.from("plans").select("id, code, name, price_cents, max_installments, validity_months, active");
+  const { data: plan } = await (renewPlanId ? planQuery.eq("id", renewPlanId) : planQuery.eq("code", planCode)).maybeSingle();
   if (!plan || !plan.active) return { ok: false, error: "Plano não encontrado." };
 
   const { data: profileRow } = await admin
@@ -108,7 +130,7 @@ export async function startPlanPurchase(input: {
     .insert({
       organization_id: org.organizationId,
       plan_id: plan.id,
-      kind: "initial",
+      kind: orderKind,
       payment_method: info.paymentMethod,
       installment_count: info.maxInstallments(plan.max_installments),
       amount_cents: plan.price_cents,
@@ -186,4 +208,27 @@ export async function startPlanPurchase(input: {
 
   revalidatePath("/billing");
   return { ok: true, url: checkout.link };
+}
+
+export type CancelRenewalResult = { ok: true } | { ok: false; error: string };
+
+/** Cancela a renovação automática (cartão) da organização. O plano atual segue valendo até o vencimento. */
+export async function cancelRenewal(): Promise<CancelRenewalResult> {
+  const org = await requireOrgContext();
+  if (!isBillingEnabledFor(org.organizationSlug)) {
+    return { ok: false, error: "A contratação online ainda não está disponível." };
+  }
+  if (org.role !== "owner" && org.role !== "admin") {
+    return { ok: false, error: "Apenas proprietários e administradores podem cancelar a renovação." };
+  }
+
+  try {
+    await cancelOrganizationRenewal(createAdminClient(), getAsaasClient(), org.organizationId);
+  } catch (err) {
+    console.error("[billing] falha ao cancelar a renovação", err instanceof Error ? err.message : err);
+    return { ok: false, error: "Não foi possível cancelar a renovação agora. Tente novamente em instantes." };
+  }
+
+  revalidatePath("/billing");
+  return { ok: true };
 }

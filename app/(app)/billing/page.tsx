@@ -123,7 +123,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {summary.mode === "plan" ? (
-          <CurrentPlanCard summary={summary} />
+          <CurrentPlanCard summary={summary} billingEnabled={billingEnabled} canManage={org.role === "owner" || org.role === "admin"} purchaseBlock={block} />
         ) : (
           <Card>
             <CardContent className="flex items-center gap-4 py-6">

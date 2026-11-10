@@ -1,6 +1,6 @@
 /**
  * Regras de uso do plano, em funções puras. ESPELHAM o banco (migration 20261105000000_billing_plans_asaas):
- * plan_grace_days() e plan_is_usable(). O banco é quem barra de verdade; isto serve para a interface
+ * plan_grace_days() e plan_is_usable() (versão da migration 20261110000000_renovacao). O banco é quem barra de verdade; isto serve para a interface
  * mostrar o estado e as mensagens certas. Mudou lá, mude aqui (e vice-versa).
  */
 
@@ -17,6 +17,8 @@ export type PlanContract = {
   maxAlternatives: number;
   /** null = simulações ilimitadas */
   runsLimit: number | null;
+  /** Renovação automática ligada: a carência também vale depois do vencimento (cobrança da renovação em atraso). */
+  autoRenew?: boolean;
 };
 
 export type PlanBlockReason = "expired" | "suspended" | "canceled" | "grace_over";
@@ -46,9 +48,12 @@ export function getPlanAccess(plan: PlanContract, now: Date = new Date()): PlanA
   if (plan.status === "canceled") return { usable: false, reason: "canceled" };
   if (plan.status === "expired" || plan.status === "pending") return { usable: false, reason: "expired" };
 
-  // active / past_due
+  // active / past_due. Com renovação automática, a carência de PLAN_GRACE_DAYS também cobre o período
+  // depois do vencimento (a cobrança da renovação pode estar recusada ou em atraso).
   const validUntil = toTime(plan.validUntil);
-  if (validUntil === null || validUntil <= now.getTime()) return { usable: false, reason: "expired" };
+  if (validUntil === null) return { usable: false, reason: "expired" };
+  const expiryEdge = plan.autoRenew ? validUntil + PLAN_GRACE_DAYS * DAY_MS : validUntil;
+  if (expiryEdge <= now.getTime()) return { usable: false, reason: "expired" };
 
   if (plan.status === "past_due") {
     const since = toTime(plan.pastDueSince);

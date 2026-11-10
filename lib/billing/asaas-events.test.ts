@@ -117,6 +117,17 @@ describe("espelho da cobrança (asaas_payments)", () => {
     expect(row).toMatchObject({ order_id: "o1", organization_id: "org1", organization_plan_id: "op1", environment: "production" });
   });
 
+  it("cobrança de renovação (sem pedido): liga só à organização, sem order_id", () => {
+    const row = buildPaymentRow({ ...payment, subscription: "sub_1" }, "sandbox", {
+      orderId: null,
+      organizationId: "org-1",
+      organizationPlanId: null,
+    });
+    expect(row).toMatchObject({ organization_id: "org-1", asaas_subscription_id: "sub_1" });
+    expect(row).not.toHaveProperty("order_id");
+    expect(row).not.toHaveProperty("organization_plan_id");
+  });
+
   it("cobrança apagada vira status DELETED", () => {
     expect(buildPaymentRow({ ...payment, deleted: true }, "sandbox", null).status).toBe("DELETED");
   });
