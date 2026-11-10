@@ -139,10 +139,25 @@ export async function processEvent(admin: Admin, asaas: AsaasClient, rowId: stri
       .update({ status: "DONE", processed_at: new Date().toISOString(), last_error: null })
       .eq("id", rowId);
   } catch (err) {
-    const message = (err instanceof Error ? err.message : String(err)).slice(0, MAX_ERROR_LENGTH);
+    const message = describeError(err).slice(0, MAX_ERROR_LENGTH);
     console.error("[asaas] falha ao processar evento", rowId, message);
     await admin.from("asaas_events").update({ status: "FAILED", last_error: message }).eq("id", rowId);
   }
+}
+
+/** Erros do Supabase (PostgrestError) não são `Error`: sem isto viravam "[object Object]". */
+function describeError(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (err && typeof err === "object") {
+    const e = err as { message?: unknown; details?: unknown; code?: unknown };
+    if (typeof e.message === "string") return [e.code, e.message, e.details].filter((p) => typeof p === "string" && p).join(" | ");
+    try {
+      return JSON.stringify(err);
+    } catch {
+      /* cai no String abaixo */
+    }
+  }
+  return String(err);
 }
 
 async function handleEvent(admin: Admin, asaas: AsaasClient, envelope: AsaasWebhookEnvelope): Promise<void> {

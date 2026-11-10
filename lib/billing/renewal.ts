@@ -19,6 +19,7 @@ type Admin = SupabaseClient;
 
 const PAID = new Set(["CONFIRMED", "RECEIVED", "RECEIVED_IN_CASH"]);
 const DRIFT_TOLERANCE_DAYS = 2;
+const CLAIM_TTL_MS = 2 * 60 * 1000;
 
 /** Data (AAAA-MM-DD) no fuso de São Paulo: o Asaas interpreta datas de vencimento como data local. */
 export function toSaoPauloDate(value: Date | string): string {
@@ -136,8 +137,20 @@ async function ensureSubscriptionForOrder(
   // Cartão à vista com renovação (RECURRENT): o checkout já criou a assinatura e apply_asaas_payment a registrou.
   if (payment.subscription) return null;
 
-  // Parcelado: cria a assinatura com o token do cartão. Antes de criar, procura por externalReference, porque
-  // POST nunca é repetido sozinho e um timeout pode ter deixado a assinatura criada sem registro aqui.
+  // As parcelas chegam quase juntas e cada uma passa por aqui: só quem reivindicar o pedido cria a assinatura.
+  // A reivindicação vence após 2 minutos, para um evento que falhou poder ser reprocessado.
+  const staleBefore = new Date(Date.now() - CLAIM_TTL_MS).toISOString();
+  const { data: claimed, error: claimError } = await admin
+    .from("plan_orders")
+    .update({ subscription_claimed_at: new Date().toISOString() })
+    .eq("id", order.id)
+    .or(`subscription_claimed_at.is.null,subscription_claimed_at.lt.${staleBefore}`)
+    .select("id");
+  if (claimError) throw claimError;
+  if (!claimed || claimed.length === 0) return null;
+
+  // Antes de criar, procura por externalReference, porque POST nunca é repetido sozinho e um timeout pode
+  // ter deixado a assinatura criada sem registro aqui.
   const found = await asaas.get<{ data?: AsaasSubscription[] }>("/subscriptions", { externalReference: order.id });
   let subscription = (found.data ?? []).find((s) => !s.deleted && s.status === "ACTIVE") ?? null;
 
