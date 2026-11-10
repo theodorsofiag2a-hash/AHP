@@ -48,6 +48,7 @@ export function buildPlanSummary(
     periodStartedAt: contract.period_started_at,
     maxAlternatives: contract.max_alternatives,
     runsLimit: contract.runs_limit,
+    autoRenew: contract.auto_renew,
   };
   return {
     mode: "plan",
