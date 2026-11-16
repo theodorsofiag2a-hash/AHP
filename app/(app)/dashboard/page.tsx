@@ -5,6 +5,8 @@ import { getOrgBillingSummary } from "@/lib/billing/org-plan";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
 import { ContactG2a } from "@/components/layout/contact-g2a";
+import { ModelCard } from "@/components/ahp/model-card";
+import { groupHref, groupModels } from "@/lib/ahp/model-groups";
 
 export default async function DashboardPage() {
   const org = await requireOrgContext();
@@ -17,14 +19,15 @@ export default async function DashboardPage() {
   const [{ data: models }, { count: modelsCount }, billing, { count: runsThisMonth }] = await Promise.all([
     supabase
       .from("ahp_models")
-      .select("id, name, slug, updated_at")
+      .select("id, name, updated_at, category, variant_label")
       .eq("organization_id", org.organizationId)
-      .order("updated_at", { ascending: false })
-      .limit(6),
+      .eq("status", "active")
+      .order("updated_at", { ascending: false }),
     supabase
       .from("ahp_models")
       .select("id", { count: "exact", head: true })
-      .eq("organization_id", org.organizationId),
+      .eq("organization_id", org.organizationId)
+      .eq("status", "active"),
     getOrgBillingSummary(org.organizationId),
     supabase
       .from("ahp_runs")
@@ -80,7 +83,7 @@ export default async function DashboardPage() {
 
       <div>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-eyebrow-gold font-ui">Modelos recentes</h2>
+          <h2 className="text-eyebrow-gold font-ui">Modelos</h2>
           {!!models?.length && (
             <Link
               href="/models"
@@ -107,20 +110,13 @@ export default async function DashboardPage() {
           </Card>
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {models.map((model) => (
-              <Link key={model.id} href={`/models/${model.id}/alternatives`}>
-                <Card className="h-full transition-all duration-200 hover:-translate-y-1 hover:border-gold-500/40 hover:shadow-card-hover">
-                  <CardContent className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium text-text-primary">{model.name}</p>
-                      <p className="text-xs text-text-faint">
-                        Atualizado em {new Date(model.updated_at).toLocaleDateString("pt-BR")}
-                      </p>
-                    </div>
-                    <ArrowRight className="h-4 w-4 text-text-faint" />
-                  </CardContent>
-                </Card>
-              </Link>
+            {groupModels(models).map((group) => (
+              <ModelCard
+                key={group.key}
+                href={groupHref(group)}
+                title={group.title}
+                subtitle={`Atualizado em ${new Date(group.updatedAt).toLocaleDateString("pt-BR")}`}
+              />
             ))}
           </div>
         )}
