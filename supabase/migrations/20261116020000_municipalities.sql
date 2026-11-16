@@ -37,4 +37,4 @@ alter table ahp_subcriteria
   add column auto_source text check (auto_source in ('ng'));
 
 alter table ahp_scales
-  add column auto_match jsonb check (auto_match is null or jsonb_typeof(auto_match) = 'object');
+  add column if not exists auto_match jsonb check (auto_match is null or jsonb_typeof(auto_match) = 'object');

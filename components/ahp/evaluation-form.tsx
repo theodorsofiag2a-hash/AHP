@@ -9,7 +9,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select } from "@/components/ui/select";
 import { Input, Label } from "@/components/ui/input";
-import { parseDecimal } from "@/lib/ahp/relative";
+import { formatDecimal, parseDecimal } from "@/lib/ahp/relative";
+import { ConnectionCard } from "@/components/ahp/connection-card";
+import type { AutoSubcriterion } from "@/lib/grid/auto-fill";
+import type { GridBus } from "@/lib/grid/types";
 import { cn } from "@/lib/utils";
 
 interface ScaleOption {
@@ -37,6 +40,15 @@ interface PillarOption {
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 
+/** Barramentos da NT-ONS e regras de preenchimento; só existe em modelos com subcritérios `auto_field`. */
+export interface ConnectionConfig {
+  buses: GridBus[];
+  autoSubcriteria: AutoSubcriterion[];
+  initialBusId: string | null;
+  initialPowerMw: number | null;
+  initialMustMw: number | null;
+}
+
 const AUTOSAVE_DELAY_MS = 800;
 
 interface Pending {
@@ -50,15 +62,26 @@ export function EvaluationForm({
   pillars,
   initialSelections,
   initialValues,
+  connection,
 }: {
   modelId: string;
   alternativeId: string;
   pillars: PillarOption[];
   initialSelections: Record<string, string>;
   initialValues: Record<string, string>;
+  connection?: ConnectionConfig;
 }) {
   const [selections, setSelections] = useState<Record<string, string>>(initialSelections);
   const [values, setValues] = useState<Record<string, string>>(initialValues);
+  // Subcritérios preenchidos pelo barramento nesta sessão (selo "auto"); some ao editar à mão.
+  const [autoFilled, setAutoFilled] = useState<Set<string>>(new Set());
+  const clearAuto = (id: string) =>
+    setAutoFilled((prev) => {
+      if (!prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
   const [attemptedSave, setAttemptedSave] = useState(false);
   const [autosaveStatus, setAutosaveStatus] = useState<SaveStatus>("idle");
   const [isPending, startTransition] = useTransition();
@@ -120,6 +143,16 @@ export function EvaluationForm({
       }
     };
   }, [modelId, alternativeId]);
+
+  function handleAutoFill(autoSelections: Record<string, string>, autoValues: Record<string, number>) {
+    // O que o barramento escolhe sobrescreve o anterior; o autosave existente grava e valida (saveEvaluation).
+    setSelections((prev) => ({ ...prev, ...autoSelections }));
+    setValues((prev) => ({
+      ...prev,
+      ...Object.fromEntries(Object.entries(autoValues).map(([id, v]) => [id, formatDecimal(v)])),
+    }));
+    setAutoFilled((prev) => new Set([...prev, ...Object.keys(autoSelections), ...Object.keys(autoValues)]));
+  }
 
   function scrollToPillar(pillarId: string) {
     pillarRefs.current[pillarId]?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -191,6 +224,19 @@ export function EvaluationForm({
         </div>
       </div>
 
+      {connection && (
+        <ConnectionCard
+          modelId={modelId}
+          alternativeId={alternativeId}
+          buses={connection.buses}
+          autoSubcriteria={connection.autoSubcriteria}
+          initialBusId={connection.initialBusId}
+          initialPowerMw={connection.initialPowerMw}
+          initialMustMw={connection.initialMustMw}
+          onAutoFill={handleAutoFill}
+        />
+      )}
+
       <div className="flex flex-col gap-4">
         {pillars.map((pillar) => {
           const pillarAnswered = pillar.subcriteria.filter(isAnswered).length;
@@ -217,17 +263,23 @@ export function EvaluationForm({
                       const invalid = text.trim() !== "" && parseDecimal(text) === null;
                       return (
                         <div key={sub.id} className="flex flex-col gap-1.5">
-                          <Label htmlFor={`${idPrefix}-${sub.id}`}>
-                            {sub.name}
-                            {sub.unit ? <span className="font-normal text-text-muted"> ({sub.unit})</span> : null}
-                          </Label>
+                          <div className="flex items-center gap-2">
+                            <Label htmlFor={`${idPrefix}-${sub.id}`}>
+                              {sub.name}
+                              {sub.unit ? <span className="font-normal text-text-muted"> ({sub.unit})</span> : null}
+                            </Label>
+                            {autoFilled.has(sub.id) && <Badge variant="success">auto</Badge>}
+                          </div>
                           <Input
                             id={`${idPrefix}-${sub.id}`}
                             type="text"
                             inputMode="decimal"
                             placeholder="Informe o valor"
                             value={text}
-                            onChange={(e) => setValues((prev) => ({ ...prev, [sub.id]: e.target.value }))}
+                            onChange={(e) => {
+                              setValues((prev) => ({ ...prev, [sub.id]: e.target.value }));
+                              clearAuto(sub.id);
+                            }}
                             className={cn((unanswered || invalid) && "border-danger")}
                           />
                           <p className={cn("text-xs", invalid ? "text-danger" : "text-text-muted")}>
@@ -240,11 +292,17 @@ export function EvaluationForm({
                     }
                     return (
                       <div key={sub.id} className="flex flex-col gap-1.5">
-                        <Label htmlFor={`${idPrefix}-${sub.id}`}>{sub.name}</Label>
+                        <div className="flex items-center gap-2">
+                          <Label htmlFor={`${idPrefix}-${sub.id}`}>{sub.name}</Label>
+                          {autoFilled.has(sub.id) && <Badge variant="success">auto</Badge>}
+                        </div>
                         <Select
                           id={`${idPrefix}-${sub.id}`}
                           value={selections[sub.id] ?? ""}
-                          onChange={(e) => setSelections((prev) => ({ ...prev, [sub.id]: e.target.value }))}
+                          onChange={(e) => {
+                            setSelections((prev) => ({ ...prev, [sub.id]: e.target.value }));
+                            clearAuto(sub.id);
+                          }}
                           className={cn(!selections[sub.id] && "text-text-faint", unanswered && "border-danger")}
                         >
                           <option value="" disabled>
