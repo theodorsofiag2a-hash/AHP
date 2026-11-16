@@ -11,13 +11,13 @@ const m = (id: string, over: Partial<ModelRow> = {}): ModelRow => ({
 });
 
 describe("groupModels", () => {
-  it("junta as visões de projeto num cartão só e deixa Fabricante antes", () => {
+  it("junta as visões de projeto num cartão só e deixa Fornecedor antes", () => {
     const groups = groupModels([
       m("inv", { category: "projeto", variant_label: "Investidor" }),
       m("fab", { category: "fabricante" }),
       m("fab-proj", { category: "projeto", variant_label: "Fabricante" }),
     ]);
-    expect(groups.map((g) => g.title)).toEqual(["Fabricante", "Projeto"]);
+    expect(groups.map((g) => g.title)).toEqual(["Fornecedor", "Projeto"]);
     expect(groups[1].models.map((x) => x.variant_label)).toEqual(["Fabricante", "Investidor"]);
   });
 

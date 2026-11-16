@@ -1,6 +1,6 @@
 /** Categorias da tela de modelos (`ahp_models.category`): cada uma vira um cartão só. */
 export const MODEL_CATEGORIES = [
-  { key: "fabricante", title: "Fabricante" },
+  { key: "fabricante", title: "Fornecedor" },
   { key: "projeto", title: "Projeto" },
 ] as const;
 
@@ -24,7 +24,7 @@ export interface ModelGroup {
 }
 
 /**
- * Cartões da tela de modelos: um por categoria (Fabricante, Projeto) e um por modelo sem categoria.
+ * Cartões da tela de modelos: um por categoria (Fornecedor, Projeto) e um por modelo sem categoria.
  * Categorias primeiro, na ordem fixa; os avulsos depois, do mais recente ao mais antigo.
  */
 export function groupModels(models: ModelRow[]): ModelGroup[] {
