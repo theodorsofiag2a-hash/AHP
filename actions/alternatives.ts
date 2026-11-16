@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { planErrorMessage } from "@/lib/billing/entitlements";
+import { RELATIVE_LOWER } from "@/lib/ahp/relative";
 
 export type CreateAlternativeState = { error?: string };
 
@@ -40,6 +41,8 @@ export async function deleteAlternative(modelId: string, alternativeId: string) 
 }
 
 const evaluationSchema = z.record(z.string().uuid(), z.string().uuid());
+/** Valor informado nos subcritérios relativos (null = apagar o valor). */
+const valuesSchema = z.record(z.string().uuid(), z.number().finite().min(0).max(1e12).nullable());
 
 /**
  * `selections`: subcriterionId -> scaleId escolhida no dropdown. O `score_value` é
@@ -49,10 +52,12 @@ const evaluationSchema = z.record(z.string().uuid(), z.string().uuid());
 export async function saveEvaluation(
   modelId: string,
   alternativeId: string,
-  selections: Record<string, string>
+  selections: Record<string, string>,
+  relativeValues: Record<string, number | null> = {}
 ) {
   const supabase = await createClient();
   const data = evaluationSchema.parse(selections);
+  const valuesData = valuesSchema.parse(relativeValues);
 
   const subcriterionIds = Object.keys(data);
   const scaleIds = Array.from(new Set(Object.values(data)));
@@ -115,11 +120,74 @@ export async function saveEvaluation(
     score_value: fulfillmentByScaleId.get(scaleId) ?? 0,
   }));
 
-  const { error } = await supabase
-    .from("ahp_alternative_scores")
-    .upsert(rows, { onConflict: "alternative_id,subcriterion_id" });
-  if (error) throw new Error(error.message);
+  if (rows.length > 0) {
+    const { error } = await supabase
+      .from("ahp_alternative_scores")
+      .upsert(rows, { onConflict: "alternative_id,subcriterion_id" });
+    if (error) throw new Error(error.message);
+  }
+
+  await saveRelativeValues(supabase, alternativeId, alternative.model_id, valuesData);
 
   revalidatePath(`/models/${modelId}/alternatives/${alternativeId}`);
   revalidatePath(`/models/${modelId}/alternatives`);
+}
+
+/**
+ * Valores dos subcritérios relativos (EUST, ICMS): um número por projeto. A nota não é gravada aqui,
+ * porque depende dos outros projetos; ela é calculada ao rodar a análise.
+ */
+async function saveRelativeValues(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  alternativeId: string,
+  alternativeModelId: string,
+  values: Record<string, number | null>
+) {
+  const ids = Object.keys(values);
+  if (ids.length === 0) return;
+
+  const { data: subs, error: subError } = await supabase
+    .from("ahp_subcriteria")
+    .select("id, pillar_id, score_mode")
+    .in("id", ids);
+  if (subError) throw new Error(subError.message);
+
+  const pillarIds = Array.from(new Set((subs ?? []).map((s) => s.pillar_id)));
+  const { data: pillars, error: pillarError } = pillarIds.length
+    ? await supabase.from("ahp_pillars").select("id, model_id").in("id", pillarIds)
+    : { data: [], error: null };
+  if (pillarError) throw new Error(pillarError.message);
+  const modelByPillar = new Map((pillars ?? []).map((p) => [p.id, p.model_id]));
+  const subById = new Map((subs ?? []).map((s) => [s.id, s]));
+
+  for (const id of ids) {
+    const sub = subById.get(id);
+    if (!sub || modelByPillar.get(sub.pillar_id) !== alternativeModelId || sub.score_mode !== RELATIVE_LOWER) {
+      throw new Error("Seleção inválida: este subcritério não recebe valor numérico.");
+    }
+  }
+
+  const toSave = ids.filter((id) => values[id] !== null);
+  const toClear = ids.filter((id) => values[id] === null);
+
+  if (toSave.length > 0) {
+    const { error } = await supabase.from("ahp_alternative_values").upsert(
+      toSave.map((id) => ({
+        alternative_id: alternativeId,
+        subcriterion_id: id,
+        raw_value: values[id] as number,
+        updated_at: new Date().toISOString(),
+      })),
+      { onConflict: "alternative_id,subcriterion_id" }
+    );
+    if (error) throw new Error(error.message);
+  }
+  if (toClear.length > 0) {
+    const { error } = await supabase
+      .from("ahp_alternative_values")
+      .delete()
+      .eq("alternative_id", alternativeId)
+      .in("subcriterion_id", toClear);
+    if (error) throw new Error(error.message);
+  }
 }

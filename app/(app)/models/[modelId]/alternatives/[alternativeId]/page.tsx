@@ -5,6 +5,7 @@ import { ContactG2a } from "@/components/layout/contact-g2a";
 import { requireOrgContext } from "@/lib/org";
 import { createClient } from "@/lib/supabase/server";
 import { EvaluationForm } from "@/components/ahp/evaluation-form";
+import { RELATIVE_LOWER, formatDecimal } from "@/lib/ahp/relative";
 
 export default async function AlternativeEvaluationPage({
   params,
@@ -42,7 +43,7 @@ export default async function AlternativeEvaluationPage({
   const { data: subcriteria } = pillarIds.length
     ? await supabase
         .from("ahp_subcriteria")
-        .select("id, pillar_id, name, sort_order")
+        .select("id, pillar_id, name, sort_order, score_mode, value_unit")
         .in("pillar_id", pillarIds)
         .order("sort_order", { ascending: true })
     : { data: [] };
@@ -62,6 +63,11 @@ export default async function AlternativeEvaluationPage({
     .select("subcriterion_id, scale_id")
     .eq("alternative_id", alternativeId);
 
+  const { data: existingValues } = await supabase
+    .from("ahp_alternative_values")
+    .select("subcriterion_id, raw_value")
+    .eq("alternative_id", alternativeId);
+
   const assembledPillars = (pillars ?? []).map((pillar) => ({
     id: pillar.id,
     name: pillar.name,
@@ -70,6 +76,8 @@ export default async function AlternativeEvaluationPage({
       .map((sub) => ({
         id: sub.id,
         name: sub.name,
+        relative: sub.score_mode === RELATIVE_LOWER,
+        unit: sub.value_unit,
         scales: (scales ?? [])
           .filter((sc) => sc.subcriterion_id === sub.id)
           .map((sc) => ({
@@ -82,6 +90,10 @@ export default async function AlternativeEvaluationPage({
 
   const initialSelections = Object.fromEntries(
     (existingScores ?? []).map((s) => [s.subcriterion_id, s.scale_id])
+  );
+
+  const initialValues = Object.fromEntries(
+    (existingValues ?? []).map((v) => [v.subcriterion_id, formatDecimal(Number(v.raw_value))])
   );
 
   return (
@@ -111,6 +123,7 @@ export default async function AlternativeEvaluationPage({
           alternativeId={alternativeId}
           pillars={assembledPillars}
           initialSelections={initialSelections}
+          initialValues={initialValues}
         />
       )}
     </div>

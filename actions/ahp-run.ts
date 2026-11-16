@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { calcularAHPGenerico } from "@/lib/ahp/calculate";
 import { pillarPairIndexes, sliderToSaaty } from "@/lib/ahp/matrix";
 import { MIN_ALTERNATIVES_TO_RUN, alternativeProgress, incompleteAlternatives } from "@/lib/ahp/readiness";
+import { buildAlternativeScores } from "@/lib/ahp/relative";
 import type { AhpAlternativeInput, AhpPillarInput } from "@/lib/ahp/types";
 
 export type ExecuteAhpRunResult = { ok: true; runId: string } | { ok: false; error: string };
@@ -54,7 +55,18 @@ export async function executeAhpRun(modelId: string, sliderValues: number[]): Pr
     : { data: [] };
   const scores = scoresRaw ?? [];
 
-  const incomplete = incompleteAlternatives(alternativeProgress(subcriterionIds, alternatives, scores));
+  // Subcritérios "relativos" (EUST, ICMS) guardam um valor por projeto; a nota sai agora, comparando a carteira.
+  const { data: valuesRaw } = subcriterionIds.length
+    ? await supabase
+        .from("ahp_alternative_values")
+        .select("alternative_id, subcriterion_id, raw_value")
+        .in("subcriterion_id", subcriterionIds)
+    : { data: [] };
+  const values = valuesRaw ?? [];
+
+  const incomplete = incompleteAlternatives(
+    alternativeProgress(subcriterionIds, alternatives, [...scores, ...values])
+  );
   if (incomplete.length > 0) {
     return {
       ok: false,
@@ -69,11 +81,14 @@ export async function executeAhpRun(modelId: string, sliderValues: number[]): Pr
       .map((s) => ({ id: s.id, weightPct: Number(s.weight_pct) })),
   }));
 
+  const scoresByAlternative = buildAlternativeScores(
+    alternatives.map((alt) => alt.id),
+    scores,
+    values
+  );
   const calcAlternatives: AhpAlternativeInput[] = alternatives.map((alt) => ({
     id: alt.id,
-    scores: Object.fromEntries(
-      scores.filter((sc) => sc.alternative_id === alt.id).map((sc) => [sc.subcriterion_id, Number(sc.score_value)])
-    ),
+    scores: scoresByAlternative[alt.id] ?? {},
   }));
 
   const result = calcularAHPGenerico(calcPillars, sliderValues, calcAlternatives);

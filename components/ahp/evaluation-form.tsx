@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select } from "@/components/ui/select";
-import { Label } from "@/components/ui/input";
+import { Input, Label } from "@/components/ui/input";
+import { parseDecimal } from "@/lib/ahp/relative";
 import { cn } from "@/lib/utils";
 
 interface ScaleOption {
@@ -20,6 +21,9 @@ interface ScaleOption {
 interface SubcriterionOption {
   id: string;
   name: string;
+  /** Subcritério relativo (EUST, ICMS): recebe um valor e a nota sai da comparação com a carteira. */
+  relative: boolean;
+  unit: string | null;
   scales: ScaleOption[];
 }
 
@@ -33,18 +37,26 @@ type SaveStatus = "idle" | "saving" | "saved" | "error";
 
 const AUTOSAVE_DELAY_MS = 800;
 
+interface Pending {
+  selections: Record<string, string>;
+  values: Record<string, number | null>;
+}
+
 export function EvaluationForm({
   modelId,
   alternativeId,
   pillars,
   initialSelections,
+  initialValues,
 }: {
   modelId: string;
   alternativeId: string;
   pillars: PillarOption[];
   initialSelections: Record<string, string>;
+  initialValues: Record<string, string>;
 }) {
   const [selections, setSelections] = useState<Record<string, string>>(initialSelections);
+  const [values, setValues] = useState<Record<string, string>>(initialValues);
   const [attemptedSave, setAttemptedSave] = useState(false);
   const [autosaveStatus, setAutosaveStatus] = useState<SaveStatus>("idle");
   const [isPending, startTransition] = useTransition();
@@ -53,22 +65,31 @@ export function EvaluationForm({
   const autosaveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const idPrefix = useId();
   // Seleções ainda não enviadas ao servidor (null = nada pendente). Usado para não perder a última escolha ao sair.
-  const unsavedSelections = useRef<Record<string, string> | null>(null);
+  const unsavedSelections = useRef<Pending | null>(null);
 
+  const relativeIds = pillars.flatMap((p) => p.subcriteria.filter((s) => s.relative).map((s) => s.id));
+  const isAnswered = (sub: SubcriterionOption) =>
+    sub.relative ? parseDecimal(values[sub.id] ?? "") !== null : Boolean(selections[sub.id]);
   const totalSubcriteria = pillars.reduce((sum, p) => sum + p.subcriteria.length, 0);
-  const answered = Object.keys(selections).length;
+  const answered = pillars.reduce((sum, p) => sum + p.subcriteria.filter(isAnswered).length, 0);
+
+  /** Valores digitados -> número, ou null para apagar (campo vazio ou inválido). */
+  function numericValues(): Record<string, number | null> {
+    return Object.fromEntries(relativeIds.map((id) => [id, parseDecimal(values[id] ?? "")]));
+  }
 
   useEffect(() => {
-    if (selections === initialSelections) return;
-    // Autosave com debounce: o estado "Salvando..." precisa acompanhar a mudança das seleções.
+    if (selections === initialSelections && values === initialValues) return;
+    // Autosave com debounce: o estado "Salvando..." precisa acompanhar a mudança da ficha.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setAutosaveStatus("saving");
-    unsavedSelections.current = selections;
+    const pending: Pending = { selections, values: numericValues() };
+    unsavedSelections.current = pending;
     if (autosaveTimeout.current) clearTimeout(autosaveTimeout.current);
     autosaveTimeout.current = setTimeout(() => {
-      saveEvaluation(modelId, alternativeId, selections)
+      saveEvaluation(modelId, alternativeId, pending.selections, pending.values)
         .then(() => {
-          if (unsavedSelections.current === selections) unsavedSelections.current = null;
+          if (unsavedSelections.current === pending) unsavedSelections.current = null;
           setAutosaveStatus("saved");
         })
         .catch((error) => {
@@ -80,7 +101,7 @@ export function EvaluationForm({
       if (autosaveTimeout.current) clearTimeout(autosaveTimeout.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selections]);
+  }, [selections, values]);
 
   // Ao sair da página (ou fechar a aba) dentro da janela do debounce, envia o que ficou pendente.
   useEffect(() => {
@@ -93,7 +114,7 @@ export function EvaluationForm({
       const pending = unsavedSelections.current;
       if (pending) {
         unsavedSelections.current = null;
-        saveEvaluation(modelId, alternativeId, pending).catch(() => {});
+        saveEvaluation(modelId, alternativeId, pending.selections, pending.values).catch(() => {});
       }
     };
   }, [modelId, alternativeId]);
@@ -106,7 +127,7 @@ export function EvaluationForm({
     setAttemptedSave(true);
     startTransition(async () => {
       try {
-        await saveEvaluation(modelId, alternativeId, selections);
+        await saveEvaluation(modelId, alternativeId, selections, numericValues());
         unsavedSelections.current = null;
         setAutosaveStatus("saved");
         toast.success("Ficha de avaliação salva.");
@@ -121,7 +142,7 @@ export function EvaluationForm({
       <div className="sticky top-0 z-10 flex flex-col gap-2 bg-bg-base py-3">
         <div className="flex items-center gap-2 overflow-x-auto">
           {pillars.map((pillar) => {
-            const pillarAnswered = pillar.subcriteria.filter((s) => selections[s.id]).length;
+            const pillarAnswered = pillar.subcriteria.filter(isAnswered).length;
             const pillarTotal = pillar.subcriteria.length;
             const complete = pillarAnswered === pillarTotal;
             return (
@@ -170,7 +191,7 @@ export function EvaluationForm({
 
       <div className="flex flex-col gap-4">
         {pillars.map((pillar) => {
-          const pillarAnswered = pillar.subcriteria.filter((s) => selections[s.id]).length;
+          const pillarAnswered = pillar.subcriteria.filter(isAnswered).length;
           return (
             <div
               key={pillar.id}
@@ -188,7 +209,33 @@ export function EvaluationForm({
                 </CardHeader>
                 <CardContent className="flex flex-col gap-4">
                   {pillar.subcriteria.map((sub) => {
-                    const unanswered = attemptedSave && !selections[sub.id];
+                    const unanswered = attemptedSave && !isAnswered(sub);
+                    if (sub.relative) {
+                      const text = values[sub.id] ?? "";
+                      const invalid = text.trim() !== "" && parseDecimal(text) === null;
+                      return (
+                        <div key={sub.id} className="flex flex-col gap-1.5">
+                          <Label htmlFor={`${idPrefix}-${sub.id}`}>
+                            {sub.name}
+                            {sub.unit ? <span className="font-normal text-text-muted"> ({sub.unit})</span> : null}
+                          </Label>
+                          <Input
+                            id={`${idPrefix}-${sub.id}`}
+                            type="text"
+                            inputMode="decimal"
+                            placeholder="Informe o valor"
+                            value={text}
+                            onChange={(e) => setValues((prev) => ({ ...prev, [sub.id]: e.target.value }))}
+                            className={cn((unanswered || invalid) && "border-danger")}
+                          />
+                          <p className={cn("text-xs", invalid ? "text-danger" : "text-text-muted")}>
+                            {invalid
+                              ? "Use só números, por exemplo 1234,56."
+                              : "Menor é melhor. A nota sai ao rodar a análise, comparando com os outros projetos."}
+                          </p>
+                        </div>
+                      );
+                    }
                     return (
                       <div key={sub.id} className="flex flex-col gap-1.5">
                         <Label htmlFor={`${idPrefix}-${sub.id}`}>{sub.name}</Label>

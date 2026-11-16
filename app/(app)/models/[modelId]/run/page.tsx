@@ -64,8 +64,17 @@ export default async function ModelRunPage({
         .in("subcriterion_id", subcriterionIds)
     : { data: [] as { alternative_id: string; subcriterion_id: string }[] };
 
+  const { data: values } = subcriterionIds.length
+    ? await supabase
+        .from("ahp_alternative_values")
+        .select("alternative_id, subcriterion_id")
+        .in("subcriterion_id", subcriterionIds)
+    : { data: [] as { alternative_id: string; subcriterion_id: string }[] };
+
   const alternativesList = alternatives ?? [];
-  const incomplete = incompleteAlternatives(alternativeProgress(subcriterionIds, alternativesList, scores ?? []));
+  const incomplete = incompleteAlternatives(
+    alternativeProgress(subcriterionIds, alternativesList, [...(scores ?? []), ...(values ?? [])])
+  );
   const creditBalance = billing.mode === "legacy" ? billing.creditBalance : 0;
   const creditsLabel = creditBalance === 1 ? "crédito" : "créditos";
 
