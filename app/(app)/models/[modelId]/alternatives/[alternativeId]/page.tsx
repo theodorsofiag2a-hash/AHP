@@ -5,7 +5,9 @@ import { ContactG2a } from "@/components/layout/contact-g2a";
 import { requireOrgContext } from "@/lib/org";
 import { createClient } from "@/lib/supabase/server";
 import { EvaluationForm } from "@/components/ahp/evaluation-form";
+import { MunicipalityCard } from "@/components/ahp/municipality-card";
 import { RELATIVE_LOWER, formatDecimal } from "@/lib/ahp/relative";
+import { listMunicipalities } from "@/actions/municipalities";
 
 export default async function AlternativeEvaluationPage({
   params,
@@ -26,7 +28,7 @@ export default async function AlternativeEvaluationPage({
 
   const { data: alternative } = await supabase
     .from("ahp_alternatives")
-    .select("id, name")
+    .select("id, name, municipality_ibge")
     .eq("id", alternativeId)
     .eq("model_id", modelId)
     .maybeSingle();
@@ -43,7 +45,7 @@ export default async function AlternativeEvaluationPage({
   const { data: subcriteria } = pillarIds.length
     ? await supabase
         .from("ahp_subcriteria")
-        .select("id, pillar_id, name, sort_order, score_mode, value_unit")
+        .select("id, pillar_id, name, sort_order, score_mode, value_unit, auto_source")
         .in("pillar_id", pillarIds)
         .order("sort_order", { ascending: true })
     : { data: [] };
@@ -93,6 +95,24 @@ export default async function AlternativeEvaluationPage({
     (existingScores ?? []).map((s) => [s.subcriterion_id, s.scale_id])
   );
 
+  // Município só aparece nos modelos que têm algum parâmetro preenchido por ele (hoje, o Ng).
+  const usesMunicipality = (subcriteria ?? []).some((s) => s.auto_source === "ng");
+  let municipalityUf = "";
+  let municipalityNg: number | null = null;
+  let municipalityOptions: { ibge_code: number; name: string; ng: number | null }[] = [];
+  if (usesMunicipality && alternative.municipality_ibge) {
+    const { data: current } = await supabase
+      .from("municipalities")
+      .select("uf, ng")
+      .eq("ibge_code", alternative.municipality_ibge)
+      .maybeSingle();
+    if (current) {
+      municipalityUf = current.uf;
+      municipalityNg = current.ng === null ? null : Number(current.ng);
+      municipalityOptions = await listMunicipalities(current.uf);
+    }
+  }
+
   const initialValues = Object.fromEntries(
     (existingValues ?? []).map((v) => [v.subcriterion_id, formatDecimal(Number(v.raw_value))])
   );
@@ -119,13 +139,25 @@ export default async function AlternativeEvaluationPage({
           <ContactG2a subject={`Configurar estrutura do modelo ${model.name}`} organizationSlug={org.organizationSlug} />
         </div>
       ) : (
+        <>
+          {usesMunicipality && (
+            <MunicipalityCard
+              modelId={modelId}
+              alternativeId={alternativeId}
+              initialUf={municipalityUf}
+              initialIbge={alternative.municipality_ibge ?? null}
+              initialOptions={municipalityOptions}
+            />
+          )}
         <EvaluationForm
+          key={`${alternative.municipality_ibge ?? "sem"}-${municipalityNg ?? "sem-ng"}`}
           modelId={modelId}
           alternativeId={alternativeId}
           pillars={assembledPillars}
           initialSelections={initialSelections}
           initialValues={initialValues}
         />
+        </>
       )}
     </div>
   );
