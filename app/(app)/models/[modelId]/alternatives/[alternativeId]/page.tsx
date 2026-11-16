@@ -53,7 +53,7 @@ export default async function AlternativeEvaluationPage({
   const { data: scales } = subcriterionIds.length
     ? await supabase
         .from("ahp_scales")
-        .select("id, subcriterion_id, description, fulfillment_pct, sort_order")
+        .select("id, subcriterion_id, description, fulfillment_pct, eliminates, sort_order")
         .in("subcriterion_id", subcriterionIds)
         .order("sort_order", { ascending: true })
     : { data: [] };
@@ -84,6 +84,7 @@ export default async function AlternativeEvaluationPage({
             id: sc.id,
             description: sc.description,
             fulfillmentPct: Number(sc.fulfillment_pct),
+            eliminates: Boolean(sc.eliminates),
           })),
       })),
   }));

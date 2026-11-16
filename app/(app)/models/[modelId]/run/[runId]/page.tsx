@@ -53,21 +53,29 @@ export default async function RunResultsPage({
 
   const { data: results } = await supabase
     .from("ahp_run_results")
-    .select("rank, final_score, pillar_scores, pillar_scores_radar, ahp_alternatives(name)")
+    .select("rank, final_score, eliminated, eliminated_reason, pillar_scores, pillar_scores_radar, ahp_alternatives(name)")
     .eq("run_id", runId)
-    .order("rank", { ascending: true });
+    .order("rank", { ascending: true, nullsFirst: false });
 
-  const ranking = (results ?? []).map((r) => {
+  const ranking = (results ?? []).filter((r) => !r.eliminated && r.rank !== null).map((r) => {
     const alternative = r.ahp_alternatives as unknown as { name: string } | { name: string }[] | null;
     const altName = Array.isArray(alternative) ? alternative[0]?.name : alternative?.name;
     return {
-      rank: r.rank,
+      rank: r.rank as number,
       name: altName ?? "—",
       finalScore: Number(r.final_score),
       pillarScores: (r.pillar_scores as PillarScoreEntry[]) ?? [],
       pillarScoresRadar: (r.pillar_scores_radar as PillarScoreEntry[]) ?? [],
     };
   });
+
+  const eliminatedList = (results ?? [])
+    .filter((r) => r.eliminated)
+    .map((r) => {
+      const alternative = r.ahp_alternatives as unknown as { name: string } | { name: string }[] | null;
+      const altName = Array.isArray(alternative) ? alternative[0]?.name : alternative?.name;
+      return { name: altName ?? "—", reason: (r.eliminated_reason as string | null) ?? "Critério eliminatório" };
+    });
 
   const pillarNames = (pillars ?? []).map((p) => p.name);
 
@@ -109,6 +117,7 @@ export default async function RunResultsPage({
           consistencyRatio={Number(run.consistency_ratio)}
           pillarWeights={pillarWeights}
           ranking={ranking}
+          eliminated={eliminatedList}
         />
       </div>
 
@@ -141,6 +150,25 @@ export default async function RunResultsPage({
           <RankingTable rows={ranking} />
         </CardContent>
       </Card>
+
+      {eliminatedList.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Projetos eliminados</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-2">
+            <p className="text-sm text-text-muted">
+              Estes projetos têm um critério eliminatório e ficaram fora do ranking e da comparação entre os demais.
+            </p>
+            {eliminatedList.map((e) => (
+              <div key={e.name} className="flex items-center justify-between gap-3 text-sm">
+                <span className="font-medium text-text-primary">{e.name}</span>
+                <Badge variant="neutral">{e.reason}</Badge>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Card>

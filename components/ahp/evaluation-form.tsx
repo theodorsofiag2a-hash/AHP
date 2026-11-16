@@ -16,6 +16,8 @@ interface ScaleOption {
   id: string;
   description: string;
   fulfillmentPct: number;
+  /** Faixa eliminatória: o projeto que a escolher sai do ranking. */
+  eliminates: boolean;
 }
 
 interface SubcriterionOption {
@@ -254,6 +256,11 @@ export function EvaluationForm({
                             </option>
                           ))}
                         </Select>
+                        {sub.scales.find((sc) => sc.id === selections[sub.id])?.eliminates && (
+                          <p className="text-xs font-medium text-danger">
+                            Critério eliminatório: com esta escolha o projeto fica fora do ranking.
+                          </p>
+                        )}
                       </div>
                     );
                   })}

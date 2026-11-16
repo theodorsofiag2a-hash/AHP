@@ -8,6 +8,7 @@ interface ExportCsvButtonProps {
   consistencyRatio: number;
   pillarWeights: { name: string; weight: number }[];
   ranking: { rank: number; name: string; finalScore: number }[];
+  eliminated?: { name: string; reason: string }[];
 }
 
 function csvEscape(value: string | number) {
@@ -21,7 +22,13 @@ function csvEscape(value: string | number) {
   return /[",\n;]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
 }
 
-export function ExportCsvButton({ modelName, consistencyRatio, pillarWeights, ranking }: ExportCsvButtonProps) {
+export function ExportCsvButton({
+  modelName,
+  consistencyRatio,
+  pillarWeights,
+  ranking,
+  eliminated = [],
+}: ExportCsvButtonProps) {
   function handleExport() {
     const lines: string[] = [];
     lines.push(`Relatorio AHP;${csvEscape(modelName)}`);
@@ -35,6 +42,12 @@ export function ExportCsvButton({ modelName, consistencyRatio, pillarWeights, ra
     lines.push("Ranking final");
     lines.push("Posicao;Alternativa;Nota final");
     ranking.forEach((r) => lines.push(`${r.rank};${csvEscape(r.name)};${r.finalScore.toFixed(0)}`));
+    if (eliminated.length > 0) {
+      lines.push("");
+      lines.push("Projetos eliminados");
+      lines.push("Alternativa;Motivo");
+      eliminated.forEach((e) => lines.push(`${csvEscape(e.name)};${csvEscape(e.reason)}`));
+    }
 
     const csvContent = "﻿" + lines.join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });

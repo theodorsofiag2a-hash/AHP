@@ -8,6 +8,7 @@ import { calcularAHPGenerico } from "@/lib/ahp/calculate";
 import { pillarPairIndexes, sliderToSaaty } from "@/lib/ahp/matrix";
 import { MIN_ALTERNATIVES_TO_RUN, alternativeProgress, incompleteAlternatives } from "@/lib/ahp/readiness";
 import { buildAlternativeScores } from "@/lib/ahp/relative";
+import { findEliminated } from "@/lib/ahp/eliminate";
 import type { AhpAlternativeInput, AhpPillarInput } from "@/lib/ahp/types";
 
 export type ExecuteAhpRunResult = { ok: true; runId: string } | { ok: false; error: string };
@@ -30,7 +31,7 @@ export async function executeAhpRun(modelId: string, sliderValues: number[]): Pr
   const pillarIds = pillars.map((p) => p.id);
   const { data: subcriteriaRaw } = await supabase
     .from("ahp_subcriteria")
-    .select("id, pillar_id, weight_pct")
+    .select("id, pillar_id, name, weight_pct")
     .in("pillar_id", pillarIds);
   const subcriteria = subcriteriaRaw ?? [];
 
@@ -50,7 +51,7 @@ export async function executeAhpRun(modelId: string, sliderValues: number[]): Pr
   const { data: scoresRaw } = subcriterionIds.length
     ? await supabase
         .from("ahp_alternative_scores")
-        .select("alternative_id, subcriterion_id, score_value")
+        .select("alternative_id, subcriterion_id, scale_id, score_value")
         .in("subcriterion_id", subcriterionIds)
     : { data: [] };
   const scores = scoresRaw ?? [];
@@ -81,12 +82,34 @@ export async function executeAhpRun(modelId: string, sliderValues: number[]): Pr
       .map((s) => ({ id: s.id, weightPct: Number(s.weight_pct) })),
   }));
 
+  // Faixas marcadas como eliminatórias (ex.: restrição tipo B): quem escolheu uma sai do ranking.
+  const { data: eliminatingScales } = subcriterionIds.length
+    ? await supabase
+        .from("ahp_scales")
+        .select("id")
+        .in("subcriterion_id", subcriterionIds)
+        .eq("eliminates", true)
+    : { data: [] };
+  const eliminated = findEliminated(
+    scores,
+    new Set((eliminatingScales ?? []).map((s) => s.id)),
+    new Map(subcriteria.map((s) => [s.id, s.name as string]))
+  );
+  const competing = alternatives.filter((alt) => !eliminated.has(alt.id));
+  if (competing.length === 0) {
+    return {
+      ok: false,
+      error: "Todos os projetos foram eliminados por critério eliminatório. Revise as fichas antes de rodar.",
+    };
+  }
+
+  // A nota relativa (EUST, ICMS) compara só os projetos que seguem na disputa.
   const scoresByAlternative = buildAlternativeScores(
-    alternatives.map((alt) => alt.id),
+    competing.map((alt) => alt.id),
     scores,
     values
   );
-  const calcAlternatives: AhpAlternativeInput[] = alternatives.map((alt) => ({
+  const calcAlternatives: AhpAlternativeInput[] = competing.map((alt) => ({
     id: alt.id,
     scores: scoresByAlternative[alt.id] ?? {},
   }));
@@ -111,6 +134,18 @@ export async function executeAhpRun(modelId: string, sliderValues: number[]): Pr
     pillar_scores_radar: pillars.map((pillar, i) => ({ pillarId: pillar.id, value: r.pillarScoresRadar[i] })),
   }));
 
+  const eliminatedResults = alternatives
+    .filter((alt) => eliminated.has(alt.id))
+    .map((alt) => ({
+      alternative_id: alt.id,
+      final_score: 0,
+      rank: null,
+      eliminated: true,
+      eliminated_reason: (eliminated.get(alt.id) ?? []).join("; "),
+      pillar_scores: [],
+      pillar_scores_radar: [],
+    }));
+
   const { data: runId, error } = await supabase.rpc("create_ahp_run", {
     p_organization_id: org.organizationId,
     p_model_id: modelId,
@@ -118,7 +153,7 @@ export async function executeAhpRun(modelId: string, sliderValues: number[]): Pr
     p_lambda_max: result.lambdaMax,
     p_pillar_comparisons: pillarComparisons,
     p_pillar_weights: pillarWeights,
-    p_results: runResults,
+    p_results: [...runResults, ...eliminatedResults],
   });
 
   if (error) {

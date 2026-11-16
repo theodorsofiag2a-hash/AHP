@@ -98,6 +98,7 @@ export async function POST(
     .from("ahp_run_results")
     .select("alternative_id, rank, final_score, pillar_scores, pillar_scores_radar, ahp_alternatives(name)")
     .eq("run_id", runId)
+    .eq("eliminated", false)
     .order("rank", { ascending: true });
   const results = resultsRaw ?? [];
   if (results.length === 0) return fail("Esta execução não tem resultados.", 400);
