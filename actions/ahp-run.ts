@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireOrgContext } from "@/lib/org";
+import { requireUserContext } from "@/lib/user-context";
 import { planErrorMessage } from "@/lib/billing/entitlements";
 import { createClient } from "@/lib/supabase/server";
 import { calcularAHPGenerico } from "@/lib/ahp/calculate";
@@ -14,7 +14,7 @@ import type { AhpAlternativeInput, AhpPillarInput } from "@/lib/ahp/types";
 export type ExecuteAhpRunResult = { ok: true; runId: string } | { ok: false; error: string };
 
 export async function executeAhpRun(modelId: string, sliderValues: number[]): Promise<ExecuteAhpRunResult> {
-  const org = await requireOrgContext();
+  await requireUserContext();
   const supabase = await createClient();
 
   const { data: pillarsRaw } = await supabase
@@ -147,7 +147,6 @@ export async function executeAhpRun(modelId: string, sliderValues: number[]): Pr
     }));
 
   const { data: runId, error } = await supabase.rpc("create_ahp_run", {
-    p_organization_id: org.organizationId,
     p_model_id: modelId,
     p_consistency_ratio: result.consistencyRatio,
     p_lambda_max: result.lambdaMax,

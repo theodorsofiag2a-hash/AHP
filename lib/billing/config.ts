@@ -8,20 +8,20 @@ export function isBillingEnabled(): boolean {
   return process.env.BILLING_ENABLED === "true";
 }
 
-/** Slugs das organizações-piloto (BILLING_PILOT_ORGS, separados por vírgula). Vazio = sem restrição. */
-export function getPilotOrgSlugs(): string[] {
-  return (process.env.BILLING_PILOT_ORGS ?? "")
+/** E-mails das contas-piloto (BILLING_PILOT_EMAILS, separados por vírgula). Vazio = sem restrição. */
+export function getPilotEmails(): string[] {
+  return (process.env.BILLING_PILOT_EMAILS ?? "")
     .split(",")
-    .map((slug) => slug.trim())
+    .map((email) => email.trim().toLowerCase())
     .filter(Boolean);
 }
 
 /**
- * Cobrança ligada para esta organização? Com BILLING_ENABLED=true e BILLING_PILOT_ORGS preenchida, só as
- * organizações listadas enxergam e usam a compra (teste em produção sem expor aos demais clientes).
+ * Cobrança ligada para esta conta? Com BILLING_ENABLED=true e BILLING_PILOT_EMAILS preenchida, só as
+ * contas listadas enxergam e usam a compra (teste em produção sem expor aos demais clientes).
  */
-export function isBillingEnabledFor(organizationSlug: string): boolean {
+export function isBillingEnabledFor(email: string | null | undefined): boolean {
   if (!isBillingEnabled()) return false;
-  const pilots = getPilotOrgSlugs();
-  return pilots.length === 0 || pilots.includes(organizationSlug);
+  const pilots = getPilotEmails();
+  return pilots.length === 0 || (!!email && pilots.includes(email.toLowerCase()));
 }

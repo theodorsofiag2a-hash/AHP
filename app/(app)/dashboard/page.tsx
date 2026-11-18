@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Layers, ArrowRight, Boxes, Coins, Activity } from "lucide-react";
-import { requireOrgContext } from "@/lib/org";
-import { getOrgBillingSummary } from "@/lib/billing/org-plan";
+import { requireUserContext } from "@/lib/user-context";
+import { getBillingSummary } from "@/lib/billing/user-plan";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
 import { ContactG2a } from "@/components/layout/contact-g2a";
@@ -9,7 +9,7 @@ import { ModelCard } from "@/components/ahp/model-card";
 import { groupHref, groupModels } from "@/lib/ahp/model-groups";
 
 export default async function DashboardPage() {
-  const org = await requireOrgContext();
+  const user = await requireUserContext();
   const supabase = await createClient();
 
   const startOfMonth = new Date();
@@ -20,19 +20,17 @@ export default async function DashboardPage() {
     supabase
       .from("ahp_models")
       .select("id, name, updated_at, category, variant_label")
-      .eq("organization_id", org.organizationId)
       .eq("status", "active")
       .order("updated_at", { ascending: false }),
     supabase
       .from("ahp_models")
       .select("id", { count: "exact", head: true })
-      .eq("organization_id", org.organizationId)
       .eq("status", "active"),
-    getOrgBillingSummary(org.organizationId),
+    getBillingSummary(user.userId),
     supabase
       .from("ahp_runs")
       .select("id", { count: "exact", head: true })
-      .eq("organization_id", org.organizationId)
+      .eq("user_id", user.userId)
       .gte("created_at", startOfMonth.toISOString()),
   ]);
 
@@ -53,7 +51,7 @@ export default async function DashboardPage() {
     <div className="flex flex-col gap-8">
       <div>
         <h1 className="text-page-title">Dashboard</h1>
-        <p className="text-sm text-text-muted">Bem-vindo, {org.organizationName}.</p>
+        <p className="text-sm text-text-muted">Bem-vindo, {user.userName}.</p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -103,9 +101,9 @@ export default async function DashboardPage() {
               </div>
               <CardTitle>Nenhum modelo ainda</CardTitle>
               <CardDescription className="max-w-md">
-                A G2A configura o modelo de decisão (pilares e critérios) da sua organização. Fale com a G2A para começar.
+                A G2A configura o modelo de decisão (pilares e critérios). Fale com a G2A para começar.
               </CardDescription>
-              <ContactG2a subject="Configurar modelo de decisão (AHP)" organizationSlug={org.organizationSlug} />
+              <ContactG2a subject="Configurar modelo de decisão (AHP)" userEmail={user.userEmail ?? undefined} />
             </CardContent>
           </Card>
         ) : (

@@ -9,7 +9,7 @@ import type { AsaasPayment, AsaasSubscription } from "../asaas/types";
  * Regras (ver migration 20261110000000_renovacao):
  *  - A assinatura renova o plano que a criou (plan_subscriptions.plan_id), reiniciando-o: 6 meses a partir do
  *    vencimento, simulações do zero. Quem aplica a cobrança de renovação é apply_asaas_payment.
- *  - Só uma assinatura ativa por organização: a mais recente vale e as anteriores são canceladas no Asaas.
+ *  - Só uma assinatura ativa por conta: a mais recente vale e as anteriores são canceladas no Asaas.
  *  - Invariante: a cobrança da assinatura vence no dia do vencimento do contrato. Se um plano maior é somado e
  *    o vencimento anda, a data da cobrança pendente (e da próxima) é ajustada.
  *  - O token do cartão só é usado na hora de criar a assinatura; nunca é gravado.
@@ -55,13 +55,13 @@ export function dueDateDrifted(current: string | null | undefined, expected: str
 
 type OrderRow = {
   id: string;
-  organization_id: string;
+  user_id: string;
   plan_id: string;
   kind: string;
   payment_method: string;
   auto_renew: boolean;
   amount_cents: number;
-  organization_plan_id: string | null;
+  user_plan_id: string | null;
 };
 
 /**
@@ -74,20 +74,20 @@ export async function syncRenewal(admin: Admin, asaas: AsaasClient, payment: Asa
 
   const { data: row, error } = await admin
     .from("asaas_payments")
-    .select("order_id, organization_id, organization_plan_id, applied_at")
+    .select("order_id, user_id, user_plan_id, applied_at")
     .eq("asaas_payment_id", payment.id)
     .maybeSingle();
   if (error) throw error;
-  if (!row || !row.applied_at || !row.organization_plan_id || !row.organization_id) return;
+  if (!row || !row.applied_at || !row.user_plan_id || !row.user_id) return;
 
-  const organizationId: string = row.organization_id;
-  const contractId: string = row.organization_plan_id;
+  const userId: string = row.user_id;
+  const contractId: string = row.user_plan_id;
 
   let order: OrderRow | null = null;
   if (row.order_id) {
     const { data, error: orderError } = await admin
       .from("plan_orders")
-      .select("id, organization_id, plan_id, kind, payment_method, auto_renew, amount_cents, organization_plan_id")
+      .select("id, user_id, plan_id, kind, payment_method, auto_renew, amount_cents, user_plan_id")
       .eq("id", row.order_id)
       .maybeSingle();
     if (orderError) throw orderError;
@@ -97,17 +97,17 @@ export async function syncRenewal(admin: Admin, asaas: AsaasClient, payment: Asa
   // 1) Pedido com renovação automática no cartão: garante a assinatura.
   let newSubscriptionId: string | null = null;
   if (order && order.auto_renew && order.payment_method === "CREDIT_CARD") {
-    newSubscriptionId = await ensureSubscriptionForOrder(admin, asaas, order, payment, contractId, organizationId);
+    newSubscriptionId = await ensureSubscriptionForOrder(admin, asaas, order, payment, contractId, userId);
   }
 
   // 2) Só uma assinatura ativa: a mais recente vale (as anteriores são canceladas no Asaas).
   if (newSubscriptionId) {
-    await cancelOtherSubscriptions(admin, asaas, organizationId, newSubscriptionId);
+    await cancelOtherSubscriptions(admin, asaas, userId, newSubscriptionId);
   }
 
   // 3) Alinha a cobrança da assinatura do contrato com o vencimento atual.
   const { data: contract, error: contractError } = await admin
-    .from("organization_plans")
+    .from("user_plans")
     .select("valid_until, asaas_subscription_id, auto_renew")
     .eq("id", contractId)
     .maybeSingle();
@@ -124,7 +124,7 @@ async function ensureSubscriptionForOrder(
   order: OrderRow,
   payment: AsaasPayment,
   contractId: string,
-  organizationId: string
+  userId: string
 ): Promise<string | null> {
   const { data: existing, error } = await admin
     .from("plan_subscriptions")
@@ -159,7 +159,7 @@ async function ensureSubscriptionForOrder(
     if (!token) throw new Error("pagamento sem token do cartão: não é possível criar a renovação automática");
 
     const { data: contract, error: contractError } = await admin
-      .from("organization_plans")
+      .from("user_plans")
       .select("valid_until")
       .eq("id", contractId)
       .single();
@@ -179,7 +179,7 @@ async function ensureSubscriptionForOrder(
 
   const { error: insertError } = await admin.from("plan_subscriptions").upsert(
     {
-      organization_id: organizationId,
+      user_id: userId,
       plan_id: order.plan_id,
       origin_order_id: order.id,
       asaas_subscription_id: subscription.id,
@@ -191,7 +191,7 @@ async function ensureSubscriptionForOrder(
   if (insertError) throw insertError;
 
   const { error: contractUpdateError } = await admin
-    .from("organization_plans")
+    .from("user_plans")
     .update({ auto_renew: true, asaas_subscription_id: subscription.id })
     .eq("id", contractId);
   if (contractUpdateError) throw contractUpdateError;
@@ -199,12 +199,12 @@ async function ensureSubscriptionForOrder(
   return subscription.id;
 }
 
-/** Cancela no Asaas (e marca aqui) toda assinatura ativa da organização que não seja a indicada. */
-async function cancelOtherSubscriptions(admin: Admin, asaas: AsaasClient, organizationId: string, keepId: string): Promise<void> {
+/** Cancela no Asaas (e marca aqui) toda assinatura ativa da conta que não seja a indicada. */
+async function cancelOtherSubscriptions(admin: Admin, asaas: AsaasClient, userId: string, keepId: string): Promise<void> {
   const { data, error } = await admin
     .from("plan_subscriptions")
     .select("asaas_subscription_id")
-    .eq("organization_id", organizationId)
+    .eq("user_id", userId)
     .eq("status", "active")
     .neq("asaas_subscription_id", keepId);
   if (error) throw error;
@@ -253,12 +253,12 @@ export async function alignSubscriptionDueDate(asaas: AsaasClient, subscriptionI
   }
 }
 
-/** Cancela a renovação automática da organização (todas as assinaturas ativas). Devolve quantas cancelou. */
-export async function cancelOrganizationRenewal(admin: Admin, asaas: AsaasClient, organizationId: string): Promise<number> {
+/** Cancela a renovação automática da conta (todas as assinaturas ativas). Devolve quantas cancelou. */
+export async function cancelUserRenewal(admin: Admin, asaas: AsaasClient, userId: string): Promise<number> {
   const { data, error } = await admin
     .from("plan_subscriptions")
     .select("asaas_subscription_id")
-    .eq("organization_id", organizationId)
+    .eq("user_id", userId)
     .eq("status", "active");
   if (error) throw error;
 
@@ -272,9 +272,9 @@ export async function cancelOrganizationRenewal(admin: Admin, asaas: AsaasClient
   }
 
   const { error: contractError } = await admin
-    .from("organization_plans")
+    .from("user_plans")
     .update({ auto_renew: false, asaas_subscription_id: null })
-    .eq("organization_id", organizationId)
+    .eq("user_id", userId)
     .eq("auto_renew", true);
   if (contractError) throw contractError;
 
@@ -286,7 +286,7 @@ export async function markSubscriptionCanceled(admin: Admin, subscriptionId: str
   const { error } = await admin.from("plan_subscriptions").update({ status: "canceled" }).eq("asaas_subscription_id", subscriptionId);
   if (error) throw error;
   const { error: contractError } = await admin
-    .from("organization_plans")
+    .from("user_plans")
     .update({ auto_renew: false, asaas_subscription_id: null })
     .eq("asaas_subscription_id", subscriptionId);
   if (contractError) throw contractError;

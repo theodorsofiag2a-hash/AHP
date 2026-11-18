@@ -29,17 +29,6 @@ export function SignupForm() {
   return (
     <form action={signUp} onInvalidCapture={handleInvalid} onInput={handleInput} className="flex flex-col gap-4">
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="organizationName">Nome da empresa</Label>
-        <Input
-          id="organizationName"
-          name="organizationName"
-          placeholder="Sua empresa"
-          required
-          className={cn(errors.organizationName && "border-danger")}
-        />
-        {errors.organizationName && <p className="text-xs text-danger">{errors.organizationName}</p>}
-      </div>
-      <div className="flex flex-col gap-1.5">
         <Label htmlFor="email">E-mail</Label>
         <Input
           id="email"

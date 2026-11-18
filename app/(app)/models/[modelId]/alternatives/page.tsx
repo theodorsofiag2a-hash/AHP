@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ClipboardList } from "lucide-react";
-import { requireOrgContext } from "@/lib/org";
-import { getOrgBillingSummary } from "@/lib/billing/org-plan";
+import { requireUserContext } from "@/lib/user-context";
+import { getBillingSummary } from "@/lib/billing/user-plan";
 import { planBlockMessage } from "@/lib/billing/plan-summary";
 import { ContactG2a } from "@/components/layout/contact-g2a";
 import { createClient } from "@/lib/supabase/server";
@@ -26,18 +26,17 @@ export default async function AlternativesPage({
   params: Promise<{ modelId: string }>;
 }) {
   const { modelId } = await params;
-  const org = await requireOrgContext();
+  const user = await requireUserContext();
   const supabase = await createClient();
 
   const { data: model } = await supabase
     .from("ahp_models")
     .select("id, name")
     .eq("id", modelId)
-    .eq("organization_id", org.organizationId)
     .maybeSingle();
   if (!model) notFound();
 
-  const billing = await getOrgBillingSummary(org.organizationId);
+  const billing = await getBillingSummary(user.userId);
   const planBlocked = billing.mode === "plan" && !billing.access.usable;
   const planFull = billing.mode === "plan" && billing.access.usable && billing.alternativesRemaining === 0;
 
@@ -59,7 +58,7 @@ export default async function AlternativesPage({
       {billing.mode === "plan" && billing.access.usable && (
         <p className="text-sm text-text-muted">
           Plano {billing.planName}: <strong className="text-text-primary">{billing.alternativesUsed} de {billing.maxAlternatives}</strong>{" "}
-          alternativas cadastradas na organização.
+          alternativas cadastradas na sua conta.
         </p>
       )}
 
@@ -80,7 +79,7 @@ export default async function AlternativesPage({
             <p className="text-sm text-text-muted">
               O plano {billing.planName} permite até {billing.maxAlternatives} alternativas. Para cadastrar mais, fale com a G2A sobre um plano maior.
             </p>
-            <ContactG2a label="Falar com a G2A" subject="Upgrade de plano — mais alternativas (AHP)" organizationSlug={org.organizationSlug} />
+            <ContactG2a label="Falar com a G2A" subject="Upgrade de plano — mais alternativas (AHP)" userEmail={user.userEmail ?? undefined} />
           </CardContent>
         </Card>
       ) : (

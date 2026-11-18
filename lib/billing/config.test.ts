@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-import { getPilotOrgSlugs, isBillingEnabled, isBillingEnabledFor } from "./config";
+import { getPilotEmails, isBillingEnabled, isBillingEnabledFor } from "./config";
 
 describe("interruptor de cobrança (BILLING_ENABLED)", () => {
   afterEach(() => {
@@ -25,29 +25,29 @@ describe("interruptor de cobrança (BILLING_ENABLED)", () => {
   });
 });
 
-describe("organizações-piloto (BILLING_PILOT_ORGS)", () => {
+describe("contas-piloto (BILLING_PILOT_EMAILS)", () => {
   afterEach(() => {
     vi.unstubAllEnvs();
   });
 
-  it("desligado geral: nenhuma organização, mesmo estando na lista", () => {
+  it("desligado geral: nenhuma conta, mesmo estando na lista", () => {
     vi.stubEnv("BILLING_ENABLED", "false");
-    vi.stubEnv("BILLING_PILOT_ORGS", "acme");
-    expect(isBillingEnabledFor("acme")).toBe(false);
+    vi.stubEnv("BILLING_PILOT_EMAILS", "acme@x.com");
+    expect(isBillingEnabledFor("acme@x.com")).toBe(false);
   });
 
-  it("ligado sem lista: todas as organizações", () => {
+  it("ligado sem lista: todas as contas", () => {
     vi.stubEnv("BILLING_ENABLED", "true");
-    vi.stubEnv("BILLING_PILOT_ORGS", "");
-    expect(isBillingEnabledFor("qualquer")).toBe(true);
+    vi.stubEnv("BILLING_PILOT_EMAILS", "");
+    expect(isBillingEnabledFor("qualquer@x.com")).toBe(true);
   });
 
   it("ligado com lista: só as listadas (ignora espaços e vazios)", () => {
     vi.stubEnv("BILLING_ENABLED", "true");
-    vi.stubEnv("BILLING_PILOT_ORGS", " acme , beta,,");
-    expect(isBillingEnabledFor("acme")).toBe(true);
-    expect(isBillingEnabledFor("beta")).toBe(true);
-    expect(isBillingEnabledFor("outra")).toBe(false);
-    expect(getPilotOrgSlugs()).toEqual(["acme", "beta"]);
+    vi.stubEnv("BILLING_PILOT_EMAILS", " acme@x.com , Beta@x.com,,");
+    expect(isBillingEnabledFor("acme@x.com")).toBe(true);
+    expect(isBillingEnabledFor("beta@x.com")).toBe(true);
+    expect(isBillingEnabledFor("outra@x.com")).toBe(false);
+    expect(getPilotEmails()).toEqual(["acme@x.com", "beta@x.com"]);
   });
 });

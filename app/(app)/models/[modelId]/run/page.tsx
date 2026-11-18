@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { Coins } from "lucide-react";
 import { notFound } from "next/navigation";
-import { requireOrgContext } from "@/lib/org";
-import { getOrgBillingSummary } from "@/lib/billing/org-plan";
+import { requireUserContext } from "@/lib/user-context";
+import { getBillingSummary } from "@/lib/billing/user-plan";
 import { planBlockMessage, pluralSimulations } from "@/lib/billing/plan-summary";
 import { RUN_COST_CREDITS } from "@/lib/credit-cost";
 import { MIN_ALTERNATIVES_TO_RUN, alternativeProgress, incompleteAlternatives } from "@/lib/ahp/readiness";
@@ -29,14 +29,13 @@ export default async function ModelRunPage({
   params: Promise<{ modelId: string }>;
 }) {
   const { modelId } = await params;
-  const org = await requireOrgContext();
+  const user = await requireUserContext();
   const supabase = await createClient();
 
   const { data: model } = await supabase
     .from("ahp_models")
     .select("id, name")
     .eq("id", modelId)
-    .eq("organization_id", org.organizationId)
     .maybeSingle();
   if (!model) notFound();
 
@@ -53,7 +52,7 @@ export default async function ModelRunPage({
       ? supabase.from("ahp_subcriteria").select("id").in("pillar_id", pillarIds)
       : Promise.resolve({ data: [] as { id: string }[] }),
     supabase.from("ahp_alternatives").select("id, name").eq("model_id", modelId).order("name"),
-    getOrgBillingSummary(org.organizationId),
+    getBillingSummary(user.userId),
   ]);
 
   const subcriterionIds = (subcriteria ?? []).map((s) => s.id);
@@ -85,7 +84,7 @@ export default async function ModelRunPage({
         <p className="text-sm text-text-muted">
           O modelo precisa de ao menos 2 pilares, e a estrutura é definida pela G2A.
         </p>
-        <ContactG2a subject={`Configurar estrutura do modelo ${model.name}`} organizationSlug={org.organizationSlug} />
+        <ContactG2a subject={`Configurar estrutura do modelo ${model.name}`} userEmail={user.userEmail ?? undefined} />
       </Blocked>
     );
   } else if (alternativesList.length < MIN_ALTERNATIVES_TO_RUN) {
@@ -147,7 +146,7 @@ export default async function ModelRunPage({
         <p className="text-sm text-text-muted">
           O plano {billing.planName} inclui {billing.runsLimit} simulações neste período. Para continuar, fale com a G2A sobre um plano maior.
         </p>
-        <ContactG2a label="Falar com a G2A" subject="Mais simulações / upgrade de plano (AHP)" organizationSlug={org.organizationSlug} />
+        <ContactG2a label="Falar com a G2A" subject="Mais simulações / upgrade de plano (AHP)" userEmail={user.userEmail ?? undefined} />
       </Blocked>
     );
   } else if (billing.mode === "legacy" && creditBalance < RUN_COST_CREDITS) {
@@ -156,7 +155,7 @@ export default async function ModelRunPage({
         <p className="text-sm text-text-muted">
           Cada execução usa {RUN_COST_CREDITS} crédito. Os créditos são liberados pela G2A.
         </p>
-        <ContactG2a label="Solicitar créditos" subject="Solicitação de créditos (AHP)" organizationSlug={org.organizationSlug} />
+        <ContactG2a label="Solicitar créditos" subject="Solicitação de créditos (AHP)" userEmail={user.userEmail ?? undefined} />
       </Blocked>
     );
   } else {

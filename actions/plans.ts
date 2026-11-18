@@ -13,9 +13,9 @@ import {
   buildCheckoutPayload,
   isAsaasCheckoutLink,
 } from "@/lib/billing/purchase";
-import { cancelOrganizationRenewal } from "@/lib/billing/renewal";
+import { cancelUserRenewal } from "@/lib/billing/renewal";
 import { isRenewalWindowOpen } from "@/lib/billing/renewal-window";
-import { requireOrgContext } from "@/lib/org";
+import { requireUserContext } from "@/lib/user-context";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const purchaseSchema = z.object({
@@ -42,12 +42,9 @@ export async function startPlanPurchase(input: {
   /** true = renovar o plano atual (reinicia: 6 meses a partir do vencimento, simulações do zero). */
   renew?: boolean;
 }): Promise<StartPlanPurchaseResult> {
-  const org = await requireOrgContext();
-  if (!isBillingEnabledFor(org.organizationSlug)) {
+  const user = await requireUserContext();
+  if (!isBillingEnabledFor(user.userEmail ?? "")) {
     return { ok: false, error: "A contratação online ainda não está disponível." };
-  }
-  if (org.role !== "owner" && org.role !== "admin") {
-    return { ok: false, error: "Apenas proprietários e administradores podem contratar um plano." };
   }
 
   const parsed = purchaseSchema.safeParse(input);
@@ -66,9 +63,9 @@ export async function startPlanPurchase(input: {
   let renewPlanId: string | null = null;
   if (input.renew === true) {
     const { data: current } = await admin
-      .from("organization_plans")
+      .from("user_plans")
       .select("status, plan_id, valid_until")
-      .eq("organization_id", org.organizationId)
+      .eq("user_id", user.userId)
       .neq("status", "pending")
       .order("created_at", { ascending: false })
       .limit(1)
@@ -90,11 +87,11 @@ export async function startPlanPurchase(input: {
   const { data: profileRow } = await admin
     .from("billing_profiles")
     .select("*")
-    .eq("organization_id", org.organizationId)
+    .eq("user_id", user.userId)
     .maybeSingle();
   const profile = profileFromRow(profileRow);
   if (!profile) {
-    return { ok: false, error: "Preencha os dados de cobrança da organização antes de contratar." };
+    return { ok: false, error: "Preencha os dados de cobrança antes de contratar." };
   }
 
   // Quem já tem plano pode contratar outro: quando o pagamento for confirmado, apply_asaas_payment soma os
@@ -105,13 +102,13 @@ export async function startPlanPurchase(input: {
   await admin
     .from("plan_orders")
     .update({ status: "failed" })
-    .eq("organization_id", org.organizationId)
+    .eq("user_id", user.userId)
     .eq("status", "creating")
     .lt("created_at", new Date(now - CREATING_STALE_MINUTES * 60_000).toISOString());
   await admin
     .from("plan_orders")
     .update({ status: "expired" })
-    .eq("organization_id", org.organizationId)
+    .eq("user_id", user.userId)
     .eq("status", "awaiting_payment")
     .lt("created_at", new Date(now - AWAITING_STALE_MINUTES * 60_000).toISOString());
 
@@ -128,7 +125,7 @@ export async function startPlanPurchase(input: {
   const { data: order, error: orderError } = await admin
     .from("plan_orders")
     .insert({
-      organization_id: org.organizationId,
+      user_id: user.userId,
       plan_id: plan.id,
       kind: orderKind,
       payment_method: info.paymentMethod,
@@ -137,7 +134,7 @@ export async function startPlanPurchase(input: {
       auto_renew: info.autoRenew,
       status: "creating",
       environment,
-      created_by: org.userId,
+      created_by: user.userId,
     })
     .select("id")
     .single();
@@ -181,7 +178,7 @@ export async function startPlanPurchase(input: {
       console.error("[billing] Asaas recusou o checkout", err.status, err.errors.map((e) => `${e.code}: ${e.description}`).join("; "));
       // 400 = dado recusado (ex.: nome, CEP): o usuário consegue corrigir em Configurações.
       if (err.status === 400 && details) {
-        return { ok: false, error: `O Asaas recusou os dados de cobrança: ${details.slice(0, 200)} Revise-os em Configurações da organização.` };
+        return { ok: false, error: `O Asaas recusou os dados de cobrança: ${details.slice(0, 200)} Revise-os em Configurações.` };
       }
     } else {
       console.error("[billing] falha ao criar checkout", err instanceof Error ? err.message : err);
@@ -212,18 +209,15 @@ export async function startPlanPurchase(input: {
 
 export type CancelRenewalResult = { ok: true } | { ok: false; error: string };
 
-/** Cancela a renovação automática (cartão) da organização. O plano atual segue valendo até o vencimento. */
+/** Cancela a renovação automática (cartão) da conta. O plano atual segue valendo até o vencimento. */
 export async function cancelRenewal(): Promise<CancelRenewalResult> {
-  const org = await requireOrgContext();
-  if (!isBillingEnabledFor(org.organizationSlug)) {
+  const user = await requireUserContext();
+  if (!isBillingEnabledFor(user.userEmail ?? "")) {
     return { ok: false, error: "A contratação online ainda não está disponível." };
-  }
-  if (org.role !== "owner" && org.role !== "admin") {
-    return { ok: false, error: "Apenas proprietários e administradores podem cancelar a renovação." };
   }
 
   try {
-    await cancelOrganizationRenewal(createAdminClient(), getAsaasClient(), org.organizationId);
+    await cancelUserRenewal(createAdminClient(), getAsaasClient(), user.userId);
   } catch (err) {
     console.error("[billing] falha ao cancelar a renovação", err instanceof Error ? err.message : err);
     return { ok: false, error: "Não foi possível cancelar a renovação agora. Tente novamente em instantes." };

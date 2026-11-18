@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { ContactG2a } from "@/components/layout/contact-g2a";
-import { requireOrgContext } from "@/lib/org";
+import { requireUserContext } from "@/lib/user-context";
 import { createClient } from "@/lib/supabase/server";
 import { EvaluationForm, type ConnectionConfig } from "@/components/ahp/evaluation-form";
 import type { AutoSubcriterion } from "@/lib/grid/auto-fill";
@@ -17,14 +17,13 @@ export default async function AlternativeEvaluationPage({
   params: Promise<{ modelId: string; alternativeId: string }>;
 }) {
   const { modelId, alternativeId } = await params;
-  const org = await requireOrgContext();
+  const user = await requireUserContext();
   const supabase = await createClient();
 
   const { data: model } = await supabase
     .from("ahp_models")
     .select("id, name")
     .eq("id", modelId)
-    .eq("organization_id", org.organizationId)
     .maybeSingle();
   if (!model) notFound();
 
@@ -170,7 +169,7 @@ export default async function AlternativeEvaluationPage({
           <p className="text-sm text-text-muted">
             Este modelo ainda não tem pilares e subcritérios configurados. A estrutura do modelo é definida pela G2A.
           </p>
-          <ContactG2a subject={`Configurar estrutura do modelo ${model.name}`} organizationSlug={org.organizationSlug} />
+          <ContactG2a subject={`Configurar estrutura do modelo ${model.name}`} userEmail={user.userEmail ?? undefined} />
         </div>
       ) : (
         <>

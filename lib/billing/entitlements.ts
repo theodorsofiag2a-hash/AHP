@@ -34,7 +34,7 @@ function toTime(value: Date | string | null): number | null {
 }
 
 /**
- * Contratação "vigente" da organização: a mais recente que não está pendente. Sem nenhuma -> null
+ * Contratação "vigente" da conta: a mais recente que não está pendente. Sem nenhuma -> null
  * (regime legado de créditos). Espelha current_org_plan(). `contracts` precisa vir ordenada do mais
  * novo para o mais antigo.
  */
@@ -74,7 +74,7 @@ export function remainingRuns(plan: Pick<PlanContract, "runsLimit">, usedRuns: n
   return Math.max(0, plan.runsLimit - usedRuns);
 }
 
-/** Vagas de alternativas restantes (todas as alternativas da organização contam). Nunca negativo. */
+/** Vagas de alternativas restantes (todas as alternativas da conta contam). Nunca negativo. */
 export function remainingAlternatives(plan: Pick<PlanContract, "maxAlternatives">, usedAlternatives: number): number {
   return Math.max(0, plan.maxAlternatives - usedAlternatives);
 }
@@ -90,7 +90,7 @@ export function graceDaysLeft(plan: Pick<PlanContract, "status" | "pastDueSince"
 
 /** Mensagens para os erros levantados pelas triggers do banco (RAISE EXCEPTION). */
 export const PLAN_ERROR_MESSAGES: Record<string, string> = {
-  plan_not_active: "O plano da organização não está ativo. Regularize o pagamento ou contrate um plano.",
+  plan_not_active: "O plano da conta não está ativo. Regularize o pagamento ou contrate um plano.",
   plan_alternatives_limit: "Você atingiu o limite de alternativas do seu plano.",
   plan_runs_exhausted: "Você usou todas as simulações do seu plano neste período.",
 };

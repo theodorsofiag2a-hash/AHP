@@ -2,12 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { requireOrgContext } from "@/lib/org";
+import { requireUserContext } from "@/lib/user-context";
 import { isPlatformAdmin } from "@/lib/admin-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const grantSchema = z.object({
-  organizationSlug: z.string().trim().min(1).max(80),
+  email: z.string().trim().toLowerCase().email("E-mail inválido."),
   // Teto defensivo contra erro de digitação (ex. casa decimal a mais): nenhum pacote real
   // chega perto disso. Ajustar aqui se um dia existir concessão legítima maior.
   amount: z.number().int().positive().max(100_000, "Quantidade acima do limite permitido (100.000)."),
@@ -22,12 +22,12 @@ export type GrantCreditsResult = { ok: true } | { ok: false; error: string };
  * via PLATFORM_ADMIN_EMAILS; usa o client com service role para bypassar RLS.
  */
 export async function grantCredits(input: {
-  organizationSlug: string;
+  email: string;
   amount: number;
   description: string;
 }): Promise<GrantCreditsResult> {
-  const org = await requireOrgContext();
-  if (!isPlatformAdmin(org.userEmail)) {
+  const user = await requireUserContext();
+  if (!isPlatformAdmin(user.userEmail)) {
     return { ok: false, error: "Sem permissão para conceder créditos." };
   }
 
@@ -38,22 +38,24 @@ export async function grantCredits(input: {
 
   const admin = createAdminClient();
 
-  const { data: targetOrg, error: orgError } = await admin
-    .from("organizations")
-    .select("id")
-    .eq("slug", parsed.data.organizationSlug)
-    .maybeSingle();
-
-  if (orgError || !targetOrg) {
-    return { ok: false, error: "Organização não encontrada para o slug informado." };
+  // Poucas contas: percorre as páginas de usuários até achar o e-mail.
+  let targetUserId: string | null = null;
+  for (let page = 1; !targetUserId; page++) {
+    const { data, error: listError } = await admin.auth.admin.listUsers({ page, perPage: 200 });
+    if (listError) return { ok: false, error: listError.message };
+    targetUserId = data.users.find((u) => u.email?.toLowerCase() === parsed.data.email)?.id ?? null;
+    if (data.users.length < 200) break;
+  }
+  if (!targetUserId) {
+    return { ok: false, error: "Nenhuma conta encontrada com este e-mail." };
   }
 
   const { error } = await admin.from("credit_transactions").insert({
-    organization_id: targetOrg.id,
+    user_id: targetUserId,
     type: "manual_grant",
     amount: parsed.data.amount,
     description: parsed.data.description,
-    created_by: org.userId,
+    created_by: user.userId,
   });
 
   if (error) {

@@ -5,16 +5,16 @@ import Link from "next/link";
 import { Coins, LogOut, Menu, Settings, ChevronDown } from "lucide-react";
 import { signOut } from "@/actions/auth";
 import { Badge } from "@/components/ui/badge";
-import { planBadge, type OrgBillingSummary } from "@/lib/billing/plan-summary";
+import { planBadge, type BillingSummary } from "@/lib/billing/plan-summary";
 
 export function Topbar({
-  organizationName,
+  userName,
   billing,
   userEmail,
   onMenuClick,
 }: {
-  organizationName: string;
-  billing: OrgBillingSummary;
+  userName: string;
+  billing: BillingSummary;
   userEmail: string | null;
   onMenuClick: () => void;
 }) {
@@ -54,13 +54,13 @@ export function Topbar({
 
         <details ref={detailsRef} className="group relative">
           <summary className="flex cursor-pointer list-none items-center gap-1.5 rounded-md px-1 py-1 text-sm font-semibold text-text-primary outline-none [&::-webkit-details-marker]:hidden">
-            {organizationName}
+            {userName}
             <ChevronDown className="h-3.5 w-3.5 text-text-faint transition-transform group-open:rotate-180" />
           </summary>
           <div className="absolute left-0 top-full z-20 mt-2 w-56 rounded-lg border border-border-subtle bg-bg-surface p-2 shadow-card-hover">
             {userEmail && <p className="truncate px-2 py-1.5 text-xs text-text-faint">{userEmail}</p>}
             <Link
-              href="/settings/organization"
+              href="/settings"
               className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-text-muted transition-colors hover:bg-bg-surface hover:text-text-primary"
             >
               <Settings className="h-4 w-4" />

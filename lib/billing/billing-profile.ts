@@ -2,7 +2,7 @@ import { z } from "zod";
 import { isValidCpfCnpj, onlyDigits } from "./document";
 
 /**
- * Dados de cobrança da organização (alimentam o customerData do Checkout). O Asaas exige todos os campos
+ * Dados de cobrança da conta (alimentam o customerData do Checkout). O Asaas exige todos os campos
  * de contato e endereço quando customerData é enviado; só o complemento é opcional. A cidade o Asaas
  * descobre pelo CEP.
  */

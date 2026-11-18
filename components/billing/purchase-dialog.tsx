@@ -14,7 +14,7 @@ import { formatBrl, installmentValue, type Plan } from "@/lib/plans";
 export type PurchaseBlock = "no_profile" | "not_admin" | "open_order" | null;
 
 const BLOCK_MESSAGES: Record<Exclude<PurchaseBlock, null>, string> = {
-  no_profile: "Antes de contratar, preencha os dados de cobrança da organização.",
+  no_profile: "Antes de contratar, preencha os dados de cobrança.",
   not_admin: "Apenas proprietários e administradores podem contratar um plano.",
   open_order: "Você já tem um pagamento em andamento. Conclua-o no aviso acima.",
 };

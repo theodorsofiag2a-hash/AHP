@@ -102,7 +102,7 @@ export default function Home() {
             Rigor matemático, do critério ao ranking.
           </h2>
           <p className="mt-4 max-w-2xl text-[15px] leading-relaxed text-text-muted">
-            A G2A configura o modelo de decisão (pilares e critérios) da sua organização e libera os créditos de
+            A G2A configura o modelo de decisão (pilares e critérios) e libera os créditos de
             execução. Você cadastra as alternativas, avalia cada uma e compara os critérios para gerar o ranking.
           </p>
           <div className="mt-12 grid grid-cols-1 gap-5 sm:grid-cols-3">

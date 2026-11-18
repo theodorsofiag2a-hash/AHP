@@ -4,17 +4,17 @@ import { contactMailto } from "@/lib/contact";
 
 export function ContactG2a({
   subject,
-  organizationSlug,
+  userEmail,
   label = "Falar com a G2A",
   size = "md",
 }: {
   subject: string;
-  organizationSlug?: string;
+  userEmail?: string;
   label?: string;
   size?: "sm" | "md" | "lg";
 }) {
   return (
-    <a href={contactMailto(subject, organizationSlug)} className={buttonClasses("primary", size)}>
+    <a href={contactMailto(subject, userEmail)} className={buttonClasses("primary", size)}>
       <Mail className="h-4 w-4" />
       {label}
     </a>

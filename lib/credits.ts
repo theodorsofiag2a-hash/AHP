@@ -1,11 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
 
-export async function getCreditBalance(organizationId: string): Promise<number> {
+export async function getCreditBalance(userId: string): Promise<number> {
   const supabase = await createClient();
   const { data } = await supabase
-    .from("organization_credit_balance")
+    .from("user_credit_balance")
     .select("balance")
-    .eq("organization_id", organizationId)
+    .eq("user_id", userId)
     .maybeSingle();
 
   return data?.balance ?? 0;
@@ -20,12 +20,12 @@ export interface CreditTransactionRow {
   createdAt: string;
 }
 
-export async function getCreditTransactions(organizationId: string, limit = 50): Promise<CreditTransactionRow[]> {
+export async function getCreditTransactions(userId: string, limit = 50): Promise<CreditTransactionRow[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("credit_transactions")
     .select("id, type, amount, balance_after, description, created_at")
-    .eq("organization_id", organizationId)
+    .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(limit);
 

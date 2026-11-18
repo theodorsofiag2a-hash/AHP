@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { requireOrgContext } from "@/lib/org";
+import { requireUserContext } from "@/lib/user-context";
 import { createClient } from "@/lib/supabase/server";
 import { buildReportData, type ReportInput } from "@/lib/report/build-data";
 import { reportAppliesToModel } from "@/lib/report/applies";
@@ -37,7 +37,7 @@ export async function POST(
   { params }: { params: Promise<{ modelId: string; runId: string }> }
 ) {
   const { modelId, runId } = await params;
-  const org = await requireOrgContext();
+  const user = await requireUserContext();
   const supabase = await createClient();
 
   let body: z.infer<typeof bodySchema>;
@@ -53,7 +53,6 @@ export async function POST(
     .from("ahp_models")
     .select("id, name")
     .eq("id", modelId)
-    .eq("organization_id", org.organizationId)
     .maybeSingle();
   if (!model) return fail("Modelo não encontrado.", 404);
   if (!reportAppliesToModel(model.name)) return fail("Este modelo não tem relatório de priorização.", 400);
@@ -63,7 +62,7 @@ export async function POST(
     .select("id, consistency_ratio, pillar_weights, pillar_comparisons, created_at")
     .eq("id", runId)
     .eq("model_id", modelId)
-    .eq("organization_id", org.organizationId)
+    .eq("user_id", user.userId)
     .maybeSingle();
   if (!run) return fail("Execução não encontrada.", 404);
 
@@ -120,7 +119,7 @@ export async function POST(
 
   type PillarEntry = { pillarId: string; points?: number; value?: number };
   const input: ReportInput = {
-    orgName: org.organizationName,
+    orgName: user.userName,
     modelName: model.name,
     runDate: new Date(run.created_at),
     consistencyRatio: Number(run.consistency_ratio),

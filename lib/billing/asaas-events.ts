@@ -13,7 +13,7 @@ import { toCents, type AsaasEnv, type AsaasPayment, type AsaasWebhookEnvelope } 
  *  - Entrega "at least once": o mesmo evento chega repetido e fora de ordem. Tudo aqui é idempotente
  *    (upsert por id) e a ordem não importa, porque cada processamento relê o estado atual no Asaas.
  *  - Esta etapa espelha as cobranças em asaas_payments e fecha pedidos cancelados/expirados. A ativação
- *    do plano (organization_plans) entra na Etapa 7, em cima desse espelho.
+ *    do plano (user_plans) entra na Etapa 7, em cima desse espelho.
  */
 
 export type EventKind = "payment" | "checkout" | "subscription" | "other";
@@ -50,10 +50,10 @@ export function getCheckoutId(envelope: AsaasWebhookEnvelope): string | null {
   return readId(envelope.checkout);
 }
 
-type OrderLink = { orderId: string | null; organizationId: string; organizationPlanId: string | null };
+type OrderLink = { orderId: string | null; userId: string; userPlanId: string | null };
 
 /**
- * Linha de asaas_payments a partir da cobrança lida no Asaas. Campos de ligação (pedido/organização) só
+ * Linha de asaas_payments a partir da cobrança lida no Asaas. Campos de ligação (pedido/usuário) só
  * entram quando conhecidos, para um novo processamento nunca apagar um vínculo já gravado. `applied_at`
  * nunca entra aqui: é a marca de idempotência de quem aplica o efeito.
  */
@@ -74,8 +74,8 @@ export function buildPaymentRow(payment: AsaasPayment, environment: AsaasEnv, li
     ...(link
       ? {
           ...(link.orderId ? { order_id: link.orderId } : {}),
-          organization_id: link.organizationId,
-          ...(link.organizationPlanId ? { organization_plan_id: link.organizationPlanId } : {}),
+          user_id: link.userId,
+          ...(link.userPlanId ? { user_plan_id: link.userPlanId } : {}),
         }
       : {}),
   };
@@ -226,11 +226,11 @@ async function handlePaymentEvent(admin: Admin, asaas: AsaasClient, envelope: As
 async function findSubscriptionLink(admin: Admin, subscriptionId: string): Promise<OrderLink | null> {
   const { data, error } = await admin
     .from("plan_subscriptions")
-    .select("organization_id")
+    .select("user_id")
     .eq("asaas_subscription_id", subscriptionId)
     .maybeSingle();
   if (error) throw error;
-  return data ? { orderId: null, organizationId: data.organization_id, organizationPlanId: null } : null;
+  return data ? { orderId: null, userId: data.user_id, userPlanId: null } : null;
 }
 
 /** Assinatura apagada ou inativada (por nós ou no painel do Asaas): desliga a renovação automática. */
@@ -244,12 +244,12 @@ async function handleSubscriptionEvent(admin: Admin, envelope: AsaasWebhookEnvel
 async function findOrderByCheckout(admin: Admin, checkoutId: string): Promise<OrderLink | null> {
   const { data, error } = await admin
     .from("plan_orders")
-    .select("id, organization_id, organization_plan_id")
+    .select("id, user_id, user_plan_id")
     .eq("asaas_checkout_id", checkoutId)
     .maybeSingle();
   if (error) throw error;
   if (!data) return null;
-  return { orderId: data.id, organizationId: data.organization_id, organizationPlanId: data.organization_plan_id };
+  return { orderId: data.id, userId: data.user_id, userPlanId: data.user_plan_id };
 }
 
 /**

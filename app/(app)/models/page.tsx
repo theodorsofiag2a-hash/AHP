@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Layers, ArrowLeft } from "lucide-react";
-import { requireOrgContext } from "@/lib/org";
+import { requireUserContext } from "@/lib/user-context";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
 import { ContactG2a } from "@/components/layout/contact-g2a";
@@ -9,13 +9,12 @@ import { MODEL_CATEGORIES, groupHref, groupModels } from "@/lib/ahp/model-groups
 
 export default async function ModelsPage({ searchParams }: { searchParams: Promise<{ categoria?: string }> }) {
   const { categoria } = await searchParams;
-  const org = await requireOrgContext();
+  const user = await requireUserContext();
   const supabase = await createClient();
 
   const { data: models } = await supabase
     .from("ahp_models")
     .select("id, name, updated_at, category, variant_label")
-    .eq("organization_id", org.organizationId)
     .eq("status", "active")
     .order("updated_at", { ascending: false });
 
@@ -60,9 +59,9 @@ export default async function ModelsPage({ searchParams }: { searchParams: Promi
             </div>
             <CardTitle>Nenhum modelo ainda</CardTitle>
             <CardDescription className="max-w-md">
-              A G2A configura o modelo de decisão (pilares e critérios) da sua organização. Fale com a G2A para começar.
+              A G2A configura o modelo de decisão (pilares e critérios). Fale com a G2A para começar.
             </CardDescription>
-            <ContactG2a subject="Configurar modelo de decisão (AHP)" organizationSlug={org.organizationSlug} />
+            <ContactG2a subject="Configurar modelo de decisão (AHP)" userEmail={user.userEmail ?? undefined} />
           </CardContent>
         </Card>
       ) : (

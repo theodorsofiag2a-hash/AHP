@@ -8,20 +8,20 @@ import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 
 export function GrantCreditsForm() {
-  const [organizationSlug, setOrganizationSlug] = useState("");
+  const [email, setEmail] = useState("");
   const [amount, setAmount] = useState(10);
   const [description, setDescription] = useState("");
   const [isPending, startTransition] = useTransition();
 
   function handleSubmit() {
     startTransition(async () => {
-      const result = await grantCredits({ organizationSlug, amount, description });
+      const result = await grantCredits({ email, amount, description });
       if (!result.ok) {
         toast.error(result.error);
         return;
       }
-      toast.success(`${amount} créditos concedidos a "${organizationSlug}".`);
-      setOrganizationSlug("");
+      toast.success(`${amount} créditos concedidos a "${email}".`);
+      setEmail("");
       setDescription("");
     });
   }
@@ -29,12 +29,12 @@ export function GrantCreditsForm() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="org-slug">Slug da organização</Label>
+        <Label htmlFor="user-email">E-mail da conta</Label>
         <Input
-          id="org-slug"
-          value={organizationSlug}
-          onChange={(e) => setOrganizationSlug(e.target.value)}
-          placeholder="ex: fornecedores-bess-ltda"
+          id="user-email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="ex: cliente@empresa.com"
         />
       </div>
       <div className="flex flex-col gap-1.5">
@@ -56,7 +56,7 @@ export function GrantCreditsForm() {
           placeholder="ex: Pacote Starter — contrato #123"
         />
       </div>
-      <Button onClick={handleSubmit} disabled={isPending || !organizationSlug || !description}>
+      <Button onClick={handleSubmit} disabled={isPending || !email || !description}>
         {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
         Conceder créditos
       </Button>

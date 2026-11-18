@@ -104,28 +104,28 @@ describe("espelho da cobrança (asaas_payments)", () => {
   it("sem pedido conhecido, não inclui campos de vínculo (não apaga vínculo já gravado)", () => {
     const row = buildPaymentRow(payment, "sandbox", null);
     expect(row).not.toHaveProperty("order_id");
-    expect(row).not.toHaveProperty("organization_id");
-    expect(row).not.toHaveProperty("organization_plan_id");
+    expect(row).not.toHaveProperty("user_id");
+    expect(row).not.toHaveProperty("user_plan_id");
   });
 
   it("com pedido conhecido, inclui o vínculo", () => {
     const row = buildPaymentRow(payment, "production", {
       orderId: "o1",
-      organizationId: "org1",
-      organizationPlanId: "op1",
+      userId: "org1",
+      userPlanId: "op1",
     });
-    expect(row).toMatchObject({ order_id: "o1", organization_id: "org1", organization_plan_id: "op1", environment: "production" });
+    expect(row).toMatchObject({ order_id: "o1", user_id: "org1", user_plan_id: "op1", environment: "production" });
   });
 
   it("cobrança de renovação (sem pedido): liga só à organização, sem order_id", () => {
     const row = buildPaymentRow({ ...payment, subscription: "sub_1" }, "sandbox", {
       orderId: null,
-      organizationId: "org-1",
-      organizationPlanId: null,
+      userId: "org-1",
+      userPlanId: null,
     });
-    expect(row).toMatchObject({ organization_id: "org-1", asaas_subscription_id: "sub_1" });
+    expect(row).toMatchObject({ user_id: "org-1", asaas_subscription_id: "sub_1" });
     expect(row).not.toHaveProperty("order_id");
-    expect(row).not.toHaveProperty("organization_plan_id");
+    expect(row).not.toHaveProperty("user_plan_id");
   });
 
   it("cobrança apagada vira status DELETED", () => {

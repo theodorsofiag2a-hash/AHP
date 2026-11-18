@@ -1,7 +1,7 @@
 import { Coins, ExternalLink, Handshake } from "lucide-react";
-import { requireOrgContext } from "@/lib/org";
+import { requireUserContext } from "@/lib/user-context";
 import { createClient } from "@/lib/supabase/server";
-import { getOrgBillingSummary } from "@/lib/billing/org-plan";
+import { getBillingSummary } from "@/lib/billing/user-plan";
 import { CurrentPlanCard } from "@/components/billing/current-plan-card";
 import { isBillingEnabledFor } from "@/lib/billing/config";
 import { isAsaasCheckoutLink } from "@/lib/billing/purchase";
@@ -25,13 +25,13 @@ function openOrderCutoffIso(): string {
   return new Date(Date.now() - OPEN_ORDER_MAX_AGE_MS).toISOString();
 }
 
-// Contratações pagas. A leitura é restrita a proprietários e administradores (RLS); para os demais volta vazio.
-async function getPaidOrders(organizationId: string): Promise<PaidOrderInput[]> {
+// Contratações pagas do próprio usuário (RLS).
+async function getPaidOrders(userId: string): Promise<PaidOrderInput[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("plan_orders")
     .select("id, amount_cents, payment_method, installment_count, updated_at, plans(name)")
-    .eq("organization_id", organizationId)
+    .eq("user_id", userId)
     .eq("status", "paid")
     .order("updated_at", { ascending: false })
     .limit(50);
@@ -49,15 +49,15 @@ async function getPaidOrders(organizationId: string): Promise<PaidOrderInput[]> 
 }
 
 export default async function BillingPage({ searchParams }: { searchParams: Promise<{ checkout?: string | string[] }> }) {
-  const org = await requireOrgContext();
+  const user = await requireUserContext();
   const [balance, transactions] = await Promise.all([
-    getCreditBalance(org.organizationId),
-    getCreditTransactions(org.organizationId),
+    getCreditBalance(user.userId),
+    getCreditTransactions(user.userId),
   ]);
 
-  const summary = await getOrgBillingSummary(org.organizationId);
-  const paidOrders = await getPaidOrders(org.organizationId);
-  const billingEnabled = isBillingEnabledFor(org.organizationSlug);
+  const summary = await getBillingSummary(user.userId);
+  const paidOrders = await getPaidOrders(user.userId);
+  const billingEnabled = isBillingEnabledFor(user.userEmail ?? "");
   const { checkout } = await searchParams;
   const returnStatus = RETURN_STATUSES.find((value) => value === checkout) ?? null;
 
@@ -67,23 +67,17 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
 
   if (billingEnabled) {
     const supabase = await createClient();
-    const isAdmin = org.role === "owner" || org.role === "admin";
-
     const [{ data: order }, { data: profile }] = await Promise.all([
-      isAdmin
-        ? supabase
-            .from("plan_orders")
-            .select("checkout_url, created_at, plans(name)")
-            .eq("organization_id", org.organizationId)
-            .eq("status", "awaiting_payment")
-            .gt("created_at", openOrderCutoffIso())
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .maybeSingle()
-        : Promise.resolve({ data: null }),
-      isAdmin
-        ? supabase.from("billing_profiles").select("organization_id").eq("organization_id", org.organizationId).maybeSingle()
-        : Promise.resolve({ data: null }),
+      supabase
+        .from("plan_orders")
+        .select("checkout_url, created_at, plans(name)")
+        .eq("user_id", user.userId)
+        .eq("status", "awaiting_payment")
+        .gt("created_at", openOrderCutoffIso())
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      supabase.from("billing_profiles").select("user_id").eq("user_id", user.userId).maybeSingle(),
     ]);
 
 
@@ -92,8 +86,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
       openOrder = { url: order.checkout_url, planName: orderPlan?.name ?? "" };
     }
 
-    if (!isAdmin) block = "not_admin";
-    else if (openOrder) block = "open_order";
+    if (openOrder) block = "open_order";
     else if (!profile) block = "no_profile";
   }
 
@@ -123,7 +116,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {summary.mode === "plan" ? (
-          <CurrentPlanCard summary={summary} billingEnabled={billingEnabled} canManage={org.role === "owner" || org.role === "admin"} purchaseBlock={block} />
+          <CurrentPlanCard summary={summary} billingEnabled={billingEnabled} canManage purchaseBlock={block} />
         ) : (
           <Card>
             <CardContent className="flex items-center gap-4 py-6">
@@ -149,7 +142,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
                 Escolha um plano abaixo. Após a confirmação, os créditos são liberados automaticamente na sua conta.
               </p>
               <div className="mt-3">
-                <ContactG2a size="sm" label="Solicitar créditos" subject="Solicitação de créditos (AHP)" organizationSlug={org.organizationSlug} />
+                <ContactG2a size="sm" label="Solicitar créditos" subject="Solicitação de créditos (AHP)" userEmail={user.userEmail ?? undefined} />
               </div>
             </div>
           </CardContent>
@@ -171,7 +164,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
             <PlanCard
               key={plan.code}
               plan={plan}
-              organizationSlug={org.organizationSlug}
+              userEmail={user.userEmail ?? undefined}
               action={billingEnabled ? <PurchaseButton plan={plan} block={block} currentPlanName={planActive && summary.mode === "plan" ? summary.planName : null} /> : undefined}
             />
           ))}
@@ -184,7 +177,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
       <Card>
         <CardHeader>
           <CardTitle>Histórico</CardTitle>
-          <CardDescription>Movimentações de crédito e contratações de plano da sua organização.</CardDescription>
+          <CardDescription>Movimentações de crédito e contratações de plano da sua conta.</CardDescription>
         </CardHeader>
         <CardContent>
           {paidOrders.length > 0 && (

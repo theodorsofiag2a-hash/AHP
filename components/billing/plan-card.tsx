@@ -14,11 +14,11 @@ import {
 
 export function PlanCard({
   plan,
-  organizationSlug,
+  userEmail,
   action,
 }: {
   plan: Plan;
-  organizationSlug: string;
+  userEmail?: string;
   /** Substitui o botão de contato (ex.: botão de compra online quando a cobrança está ligada). */
   action?: ReactNode;
 }) {
@@ -65,7 +65,7 @@ export function PlanCard({
               size="sm"
               label="Contratar"
               subject={`Contratar plano ${plan.name} (${plan.code}) — AHP`}
-              organizationSlug={organizationSlug}
+              userEmail={userEmail}
             />
           )}
         </div>

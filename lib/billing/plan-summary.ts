@@ -1,6 +1,6 @@
 import { getPlanAccess, graceDaysLeft, remainingAlternatives, remainingRuns, type PlanAccess, type PlanBlockReason, type PlanStatus } from "./entitlements";
 
-/** Resumo do plano contratado da organização, pronto para a interface. */
+/** Resumo do plano contratado da conta, pronto para a interface. */
 export type PlanSummary = {
   mode: "plan";
   planName: string;
@@ -20,10 +20,10 @@ export type PlanSummary = {
   graceDaysLeft: number | null;
 };
 
-/** Organização sem plano: segue o regime antigo de créditos. */
+/** Conta sem plano: segue o regime antigo de créditos. */
 export type LegacySummary = { mode: "legacy"; creditBalance: number };
 
-export type OrgBillingSummary = LegacySummary | PlanSummary;
+export type BillingSummary = LegacySummary | PlanSummary;
 
 export type ContractInput = {
   status: PlanStatus;

@@ -3,16 +3,16 @@
 import { ReactNode, useState } from "react";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
-import type { OrgBillingSummary } from "@/lib/billing/plan-summary";
+import type { BillingSummary } from "@/lib/billing/plan-summary";
 
 export function AppShell({
-  organizationName,
+  userName,
   billing,
   userEmail,
   children,
 }: {
-  organizationName: string;
-  billing: OrgBillingSummary;
+  userName: string;
+  billing: BillingSummary;
   userEmail: string | null;
   children: ReactNode;
 }) {
@@ -23,7 +23,7 @@ export function AppShell({
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex flex-1 flex-col">
         <Topbar
-          organizationName={organizationName}
+          userName={userName}
           billing={billing}
           userEmail={userEmail}
           onMenuClick={() => setSidebarOpen(true)}

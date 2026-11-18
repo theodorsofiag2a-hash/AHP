@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { requireOrgContext } from "@/lib/org";
+import { requireUserContext } from "@/lib/user-context";
 import { createClient } from "@/lib/supabase/server";
 import { ModelTabs } from "@/components/ahp/model-tabs";
 import { CrMeter } from "@/components/ahp/cr-meter";
@@ -24,14 +24,13 @@ export default async function RunResultsPage({
   params: Promise<{ modelId: string; runId: string }>;
 }) {
   const { modelId, runId } = await params;
-  const org = await requireOrgContext();
+  const user = await requireUserContext();
   const supabase = await createClient();
 
   const { data: model } = await supabase
     .from("ahp_models")
     .select("id, name")
     .eq("id", modelId)
-    .eq("organization_id", org.organizationId)
     .maybeSingle();
   if (!model) notFound();
 
@@ -40,7 +39,7 @@ export default async function RunResultsPage({
     .select("id, consistency_ratio, pillar_weights, created_at")
     .eq("id", runId)
     .eq("model_id", modelId)
-    .eq("organization_id", org.organizationId)
+    .eq("user_id", user.userId)
     .maybeSingle();
   if (!run) notFound();
 
@@ -194,7 +193,7 @@ export default async function RunResultsPage({
         <GenerateReportCard
           modelId={model.id}
           runId={run.id}
-          defaultClientName={org.organizationName}
+          defaultClientName={user.userName}
           defaultDocumentNumber={`AHP-${new Date(run.created_at).getFullYear()}-${run.id.slice(0, 6).toUpperCase()}`}
         />
       )}

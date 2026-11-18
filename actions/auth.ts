@@ -37,7 +37,6 @@ const signUpSchema = z.object({
   // (ver docs/SECURITY_AUDIT.md, achado S8 — antes disto, um POST direto contornava o
   // mínimo de 8 caracteres do HTML).
   password: z.string().min(8, "A senha precisa de pelo menos 8 caracteres."),
-  organizationName: z.string().trim().min(1, "Informe o nome da empresa.").max(120, "Nome da empresa muito longo."),
 });
 
 export async function signIn(formData: FormData) {
@@ -58,7 +57,6 @@ export async function signUp(formData: FormData) {
   const parsed = signUpSchema.safeParse({
     email: String(formData.get("email") ?? "").trim(),
     password: String(formData.get("password") ?? ""),
-    organizationName: String(formData.get("organizationName") ?? "").trim(),
   });
 
   if (!parsed.success) {
@@ -66,7 +64,7 @@ export async function signUp(formData: FormData) {
     redirect(`/signup?error=${encodeURIComponent(message)}`);
   }
 
-  const { email, password, organizationName } = parsed.data;
+  const { email, password } = parsed.data;
 
   const supabase = await createClient();
   const origin = (await headers()).get("origin");
@@ -75,7 +73,6 @@ export async function signUp(formData: FormData) {
     email,
     password,
     options: {
-      data: { organization_name: organizationName },
       emailRedirectTo: `${origin}/auth/callback`,
     },
   });

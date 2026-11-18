@@ -68,7 +68,7 @@ export async function saveEvaluation(
     .in("id", scaleIds);
   if (scalesError) throw new Error(scalesError.message);
 
-  // A RLS só confere se a *alternativa* pertence à organização; não confere se a escala
+  // A RLS só confere se a *alternativa* pertence ao usuário; não confere se a escala
   // escolhida pertence ao subcritério indicado para ela, nem se o subcritério pertence ao
   // mesmo modelo da alternativa. Sem isso, dava para gravar a nota de uma escala de outro
   // subcritério (ou de outro modelo) como se fosse a resposta certa (ver
