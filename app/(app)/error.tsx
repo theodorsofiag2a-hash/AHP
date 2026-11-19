@@ -19,6 +19,7 @@ export default function AppError({ error, reset }: { error: Error & { digest?: s
           </div>
           <CardTitle>Algo deu errado</CardTitle>
           <CardDescription>Não foi possível carregar esta página. Tente novamente.</CardDescription>
+          {error.digest && <p className="text-xs text-text-faint">Código do erro: {error.digest}</p>}
           <Button variant="secondary" className="mt-2" onClick={() => reset()}>
             Tentar novamente
           </Button>

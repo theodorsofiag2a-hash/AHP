@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { planErrorMessage } from "@/lib/billing/entitlements";
 import { RELATIVE_LOWER } from "@/lib/ahp/relative";
 import { MODEL_LOCKED_MESSAGE, isModelLocked } from "@/lib/ahp/model-access";
+import { isLocked } from "@/lib/ahp/scoring";
 import { getBillingSummary } from "@/lib/billing/user-plan";
 import { isTrialBilling } from "@/lib/billing/trial";
 
@@ -102,7 +103,7 @@ export async function saveEvaluation(
 
   const { data: subcriteria, error: subError } = await supabase
     .from("ahp_subcriteria")
-    .select("id, pillar_id, auto_source")
+    .select("id, pillar_id, auto_source, score_mode, trial")
     .in("id", subcriterionIds);
   if (subError) throw new Error(subError.message);
 
@@ -128,9 +129,15 @@ export async function saveEvaluation(
   const licensingIds = new Set(
     (subcriteria ?? []).filter((s) => s.auto_source === "licensing").map((s) => s.id)
   );
+  // Versão gratuita: parâmetro bloqueado não é gravado (nem por escolha, nem pelo preenchimento automático).
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const trial = user ? isTrialBilling(await getBillingSummary(user.id)) : false;
+  const lockedIds = new Set((subcriteria ?? []).filter((s) => isLocked(s, trial)).map((s) => s.id));
 
   const rows = Object.entries(data)
-    .filter(([subcriterionId]) => !licensingIds.has(subcriterionId))
+    .filter(([subcriterionId]) => !licensingIds.has(subcriterionId) && !lockedIds.has(subcriterionId))
     .map(([subcriterionId, scaleId]) => ({
     alternative_id: alternativeId,
     subcriterion_id: subcriterionId,
@@ -145,7 +152,7 @@ export async function saveEvaluation(
     if (error) throw new Error(error.message);
   }
 
-  await saveRelativeValues(supabase, alternativeId, alternative.model_id, valuesData);
+  await saveRelativeValues(supabase, alternativeId, alternative.model_id, valuesData, trial);
 
   revalidatePath(`/models/${modelId}/alternatives/${alternativeId}`);
   revalidatePath(`/models/${modelId}/alternatives`);
@@ -159,16 +166,22 @@ async function saveRelativeValues(
   supabase: Awaited<ReturnType<typeof createClient>>,
   alternativeId: string,
   alternativeModelId: string,
-  values: Record<string, number | null>
+  allValues: Record<string, number | null>,
+  trial: boolean
 ) {
-  const ids = Object.keys(values);
-  if (ids.length === 0) return;
+  if (Object.keys(allValues).length === 0) return;
 
   const { data: subs, error: subError } = await supabase
     .from("ahp_subcriteria")
-    .select("id, pillar_id, score_mode")
-    .in("id", ids);
+    .select("id, pillar_id, score_mode, trial")
+    .in("id", Object.keys(allValues));
   if (subError) throw new Error(subError.message);
+
+  // Versão gratuita: valor de parâmetro bloqueado (ex.: EUST vindo do barramento) é ignorado.
+  const lockedIds = new Set((subs ?? []).filter((s) => isLocked(s, trial)).map((s) => s.id));
+  const values = Object.fromEntries(Object.entries(allValues).filter(([id]) => !lockedIds.has(id)));
+  const ids = Object.keys(values);
+  if (ids.length === 0) return;
 
   const pillarIds = Array.from(new Set((subs ?? []).map((s) => s.pillar_id)));
   const { data: pillars, error: pillarError } = pillarIds.length

@@ -116,7 +116,8 @@ export default async function AlternativeEvaluationPage({
   const autoSubcriteria: AutoSubcriterion[] = [];
   for (const sub of subcriteria ?? []) {
     const autoField = parseAutoField(sub.auto_field);
-    if (!autoField) continue;
+    // No trial, o barramento não preenche parâmetro bloqueado.
+    if (!autoField || isLocked(sub, trial)) continue;
     autoSubcriteria.push({
       id: sub.id,
       name: sub.name,
