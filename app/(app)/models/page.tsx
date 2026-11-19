@@ -22,6 +22,17 @@ export default async function ModelsPage({ searchParams }: { searchParams: Promi
     .eq("status", "active")
     .order("updated_at", { ascending: false });
 
+  // Nome dos modelos liberados na versão gratuita, vindo do banco (ex.: "o modelo Projeto → Investidor").
+  const freeModels = (models ?? []).filter((m) => m.trial_available);
+  const freeModelsLabel = freeModels.length
+    ? `${freeModels.length === 1 ? "o modelo" : "os modelos"} ${freeModels
+        .map((m) => {
+          const categoryTitle = MODEL_CATEGORIES.find((c) => c.key === m.category)?.title;
+          return categoryTitle && m.variant_label ? `${categoryTitle} → ${m.variant_label}` : m.name;
+        })
+        .join(", ")}`
+    : "";
+
   // ?categoria=projeto: mostra as visões daquela categoria (ex.: Investidor e Fabricante).
   const category = MODEL_CATEGORIES.find((c) => c.key === categoria);
   const groups = groupModels(models ?? []);
@@ -46,8 +57,8 @@ export default async function ModelsPage({ searchParams }: { searchParams: Promi
 
       {trial && (
         <p className="rounded-md border border-gold-500/30 bg-gold-soft px-3 py-2 text-sm text-gold-700">
-          Versão gratuita: você usa o modelo Projeto → Equipamento de BESS. Os demais aparecem bloqueados e ficam
-          disponíveis na versão completa (contratação sob consulta com a G2A).
+          Versão gratuita: você usa {freeModelsLabel || "os modelos liberados"}. Os demais aparecem bloqueados e
+          ficam disponíveis na versão completa (contratação sob consulta com a G2A).
         </p>
       )}
 
