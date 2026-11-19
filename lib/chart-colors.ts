@@ -1,17 +1,16 @@
 /**
- * Paleta categórica (CVD) com contraste ≥ 3:1 contra o fundo branco dos cards (#ffffff).
- * Ordem fixa — nunca cicle nem reordene por rank; a identidade é sempre a mesma posição
- * (ex: pilar[0] é sempre a cor 1). Ver skill dataviz / references/palette.md.
+ * Paleta categórica dos gráficos, tirada da identidade G2A (ouro da marca + tons terrosos).
+ * Validada com o validate_palette.js da skill dataviz (fundo #ffffff): faixa de luminosidade, croma,
+ * separação para daltonismo entre vizinhas (ΔE ≥ 16), visão normal (ΔE ≥ 21) e contraste ≥ 3:1 — tudo PASS.
+ * Ordem fixa — nunca cicle nem reordene por rank: pilar[0] é sempre a cor 1.
+ * As cores de status (--success, --danger) ficam de fora de propósito.
  */
 export const CHART_CATEGORICAL_COLORS = [
-  "#3987e5", // 1 blue
-  "#d95926", // 2 orange
-  "#199e70", // 3 aqua
-  "#c98500", // 4 yellow
-  "#d55181", // 5 magenta
-  "#008300", // 6 green
-  "#9085e9", // 7 violet
-  "#e66767", // 8 red
+  "#b07d1f", // 1 ouro (marca)
+  "#2b6fb0", // 2 azul
+  "#c4552d", // 3 terracota
+  "#7a5aa8", // 4 violeta
+  "#3f8f5a", // 5 verde
 ] as const;
 
 export function categoricalColor(index: number): string {

@@ -40,9 +40,13 @@ export function RankingChart({ data, pillarNames }: { data: ChartRow[]; pillarNa
           labelStyle={{ color: CHART_THEME.text }}
           cursor={{ fill: CHART_THEME.cursor }}
         />
-        <Legend wrapperStyle={{ fontSize: 12, color: CHART_THEME.axis }} />
+        <Legend
+          wrapperStyle={{ fontSize: 12 }}
+          // Texto da legenda em cor de texto; a cor da série fica só no marcador.
+          formatter={(value) => <span style={{ color: CHART_THEME.axis }}>{value}</span>}
+        />
         {pillarNames.map((pillarName, i) => (
-          <Bar key={pillarName} dataKey={pillarName} stackId="score" fill={categoricalColor(i)} stroke={CHART_THEME.surface} strokeWidth={1} radius={0} />
+          <Bar key={pillarName} dataKey={pillarName} stackId="score" fill={categoricalColor(i)} stroke={CHART_THEME.surface} strokeWidth={2} radius={0} />
         ))}
       </BarChart>
     </ResponsiveContainer>

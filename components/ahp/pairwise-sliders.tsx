@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { PairwiseGuide } from "@/components/ahp/pairwise-guide";
 
 interface PillarOption {
   id: string;
@@ -80,6 +81,8 @@ export function PairwiseSliders({
 
   return (
     <div className="flex flex-col gap-6">
+      <PairwiseGuide pairCount={pairs.length} pillarCount={pillars.length} />
+
       <p className="text-sm text-text-muted">
         Par {currentIndex + 1} de {pairs.length}
       </p>

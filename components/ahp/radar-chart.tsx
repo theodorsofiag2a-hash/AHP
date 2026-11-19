@@ -29,7 +29,11 @@ export function AhpRadarChart({ data, seriesNames }: { data: RadarRow[]; seriesN
           contentStyle={CHART_TOOLTIP_STYLE}
           labelStyle={{ color: CHART_THEME.text }}
         />
-        <Legend wrapperStyle={{ fontSize: 12, color: CHART_THEME.axis }} />
+        <Legend
+          wrapperStyle={{ fontSize: 12 }}
+          // Texto da legenda em cor de texto; a cor da série fica só no marcador.
+          formatter={(value) => <span style={{ color: CHART_THEME.axis }}>{value}</span>}
+        />
         {seriesNames.map((name, i) => (
           <Radar
             key={name}
