@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { Layers, ArrowLeft } from "lucide-react";
 import { requireUserContext } from "@/lib/user-context";
+import { getBillingSummary } from "@/lib/billing/user-plan";
+import { isModelLocked } from "@/lib/ahp/model-access";
+import { isTrialBilling } from "@/lib/billing/trial";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
 import { ContactG2a } from "@/components/layout/contact-g2a";
@@ -11,10 +14,11 @@ export default async function ModelsPage({ searchParams }: { searchParams: Promi
   const { categoria } = await searchParams;
   const user = await requireUserContext();
   const supabase = await createClient();
+  const trial = isTrialBilling(await getBillingSummary(user.userId));
 
   const { data: models } = await supabase
     .from("ahp_models")
-    .select("id, name, updated_at, category, variant_label")
+    .select("id, name, updated_at, category, variant_label, trial_available")
     .eq("status", "active")
     .order("updated_at", { ascending: false });
 
@@ -40,12 +44,20 @@ export default async function ModelsPage({ searchParams }: { searchParams: Promi
         <h1 className="text-page-title">Modelos</h1>
       )}
 
+      {trial && (
+        <p className="rounded-md border border-gold-500/30 bg-gold-soft px-3 py-2 text-sm text-gold-700">
+          Versão gratuita: você usa o modelo Projeto → Equipamento de BESS. Os demais aparecem bloqueados e ficam
+          disponíveis na versão completa (contratação sob consulta com a G2A).
+        </p>
+      )}
+
       {selected ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {selected.models.map((model) => (
             <ModelCard
               key={model.id}
               href={`/models/${model.id}/alternatives`}
+              locked={isModelLocked(model, trial)}
               title={model.variant_label ?? model.name}
               subtitle={`Atualizado em ${new Date(model.updated_at).toLocaleDateString("pt-BR")}`}
             />
@@ -70,6 +82,7 @@ export default async function ModelsPage({ searchParams }: { searchParams: Promi
             <ModelCard
               key={group.key}
               href={groupHref(group)}
+              locked={group.models.every((m) => isModelLocked(m, trial))}
               title={group.title}
               subtitle={`Atualizado em ${new Date(group.updatedAt).toLocaleDateString("pt-BR")}`}
             />

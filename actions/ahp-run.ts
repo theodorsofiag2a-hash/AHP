@@ -5,6 +5,7 @@ import { requireUserContext } from "@/lib/user-context";
 import { getBillingSummary } from "@/lib/billing/user-plan";
 import { isTrialBilling } from "@/lib/billing/trial";
 import { isScoring } from "@/lib/ahp/scoring";
+import { MODEL_LOCKED_MESSAGE, isModelLocked } from "@/lib/ahp/model-access";
 import { planErrorMessage } from "@/lib/billing/entitlements";
 import { createClient } from "@/lib/supabase/server";
 import { calcularAHPGenerico } from "@/lib/ahp/calculate";
@@ -20,6 +21,10 @@ export async function executeAhpRun(modelId: string, sliderValues: number[]): Pr
   const user = await requireUserContext();
   const supabase = await createClient();
   const trial = isTrialBilling(await getBillingSummary(user.userId));
+
+  const { data: model } = await supabase.from("ahp_models").select("trial_available").eq("id", modelId).maybeSingle();
+  if (!model) return { ok: false, error: "Modelo não encontrado." };
+  if (isModelLocked(model, trial)) return { ok: false, error: MODEL_LOCKED_MESSAGE };
 
   const { data: pillarsRaw } = await supabase
     .from("ahp_pillars")

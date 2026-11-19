@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { requireUserContext } from "@/lib/user-context";
+import { requireModelAccess } from "@/lib/ahp/model-access-server";
 import { createClient } from "@/lib/supabase/server";
 import { ModelTabs } from "@/components/ahp/model-tabs";
 import { CrMeter } from "@/components/ahp/cr-meter";
@@ -33,10 +34,11 @@ export default async function RunResultsPage({
 
   const { data: model } = await supabase
     .from("ahp_models")
-    .select("id, name, category")
+    .select("id, name, category, trial_available")
     .eq("id", modelId)
     .maybeSingle();
   if (!model) notFound();
+  await requireModelAccess(model, user.userId);
 
   const trial = isTrialBilling(await getBillingSummary(user.userId));
   const withReport = reportAppliesToModel(model);

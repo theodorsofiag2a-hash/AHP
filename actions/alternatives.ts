@@ -6,6 +6,9 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { planErrorMessage } from "@/lib/billing/entitlements";
 import { RELATIVE_LOWER } from "@/lib/ahp/relative";
+import { MODEL_LOCKED_MESSAGE, isModelLocked } from "@/lib/ahp/model-access";
+import { getBillingSummary } from "@/lib/billing/user-plan";
+import { isTrialBilling } from "@/lib/billing/trial";
 
 export type CreateAlternativeState = { error?: string };
 
@@ -18,6 +21,14 @@ export async function createAlternative(
   const supabase = await createClient();
   const parsed = z.string().trim().min(1).max(120).safeParse(String(formData.get("name") ?? ""));
   if (!parsed.success) return { error: "Informe um nome para a alternativa (até 120 caracteres)." };
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Sessão expirada. Entre novamente." };
+  const { data: model } = await supabase.from("ahp_models").select("trial_available").eq("id", modelId).maybeSingle();
+  if (!model) return { error: "Modelo não encontrado." };
+  if (isModelLocked(model, isTrialBilling(await getBillingSummary(user.id)))) return { error: MODEL_LOCKED_MESSAGE };
 
   const { data, error } = await supabase
     .from("ahp_alternatives")

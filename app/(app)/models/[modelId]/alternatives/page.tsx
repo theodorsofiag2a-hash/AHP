@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, CheckCircle2, ClipboardList, Plus } from "lucide-react";
 import { requireUserContext } from "@/lib/user-context";
+import { requireModelAccess } from "@/lib/ahp/model-access-server";
 import { getBillingSummary } from "@/lib/billing/user-plan";
 import { planBlockMessage } from "@/lib/billing/plan-summary";
 import { ContactG2a } from "@/components/layout/contact-g2a";
@@ -38,10 +39,11 @@ export default async function AlternativesPage({
 
   const { data: model } = await supabase
     .from("ahp_models")
-    .select("id, name")
+    .select("id, name, trial_available")
     .eq("id", modelId)
     .maybeSingle();
   if (!model) notFound();
+  await requireModelAccess(model, user.userId);
 
   const billing = await getBillingSummary(user.userId);
   const planBlocked = billing.mode === "plan" && !billing.access.usable;

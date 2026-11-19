@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Layers, ArrowRight, Boxes, Coins, Activity } from "lucide-react";
 import { requireUserContext } from "@/lib/user-context";
+import { isModelLocked } from "@/lib/ahp/model-access";
 import { getBillingSummary } from "@/lib/billing/user-plan";
 import { isTrialBilling } from "@/lib/billing/trial";
 import { createClient } from "@/lib/supabase/server";
@@ -20,7 +21,7 @@ export default async function DashboardPage() {
   const [{ data: models }, { count: modelsCount }, billing, { count: runsThisMonth }] = await Promise.all([
     supabase
       .from("ahp_models")
-      .select("id, name, updated_at, category, variant_label")
+      .select("id, name, updated_at, category, variant_label, trial_available")
       .eq("status", "active")
       .order("updated_at", { ascending: false }),
     supabase
@@ -34,6 +35,8 @@ export default async function DashboardPage() {
       .eq("user_id", user.userId)
       .gte("created_at", startOfMonth.toISOString()),
   ]);
+
+  const trial = isTrialBilling(billing);
 
   const kpis = [
     { label: "Modelos ativos", value: modelsCount ?? 0, icon: Boxes, href: "/models" },
@@ -115,6 +118,7 @@ export default async function DashboardPage() {
               <ModelCard
                 key={group.key}
                 href={groupHref(group)}
+                locked={group.models.every((m) => isModelLocked(m, trial))}
                 title={group.title}
                 subtitle={`Atualizado em ${new Date(group.updatedAt).toLocaleDateString("pt-BR")}`}
               />

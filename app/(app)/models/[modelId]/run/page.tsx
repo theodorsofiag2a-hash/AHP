@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Coins } from "lucide-react";
 import { notFound } from "next/navigation";
 import { requireUserContext } from "@/lib/user-context";
+import { requireModelAccess } from "@/lib/ahp/model-access-server";
 import { getBillingSummary } from "@/lib/billing/user-plan";
 import { isTrialBilling } from "@/lib/billing/trial";
 import { isScoring } from "@/lib/ahp/scoring";
@@ -36,10 +37,11 @@ export default async function ModelRunPage({
 
   const { data: model } = await supabase
     .from("ahp_models")
-    .select("id, name")
+    .select("id, name, trial_available")
     .eq("id", modelId)
     .maybeSingle();
   if (!model) notFound();
+  await requireModelAccess(model, user.userId);
 
   const { data: pillars } = await supabase
     .from("ahp_pillars")

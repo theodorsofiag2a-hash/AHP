@@ -10,6 +10,8 @@ export interface ModelRow {
   updated_at: string;
   category: string | null;
   variant_label: string | null;
+  /** Liberado na versão gratuita. */
+  trial_available?: boolean | null;
 }
 
 export interface ModelGroup {
