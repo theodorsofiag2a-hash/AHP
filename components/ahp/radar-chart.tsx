@@ -21,10 +21,17 @@ interface RadarRow {
 export function AhpRadarChart({ data, seriesNames }: { data: RadarRow[]; seriesNames: string[] }) {
   return (
     <ResponsiveContainer width="100%" height={320}>
-      <RechartsRadarChart data={data} outerRadius="70%">
+      <RechartsRadarChart data={data} outerRadius="70%" startAngle={90} endAngle={-270}>
         <PolarGrid stroke={CHART_THEME.grid} />
         <PolarAngleAxis dataKey="pillar" stroke={CHART_THEME.axis} fontSize={12} />
-        <PolarRadiusAxis angle={30} domain={[0, 10]} stroke={CHART_THEME.axisFaint} fontSize={10} tickCount={6} />
+        {/* A teia começa no topo (90°); a escala 0–10 fica sobre a ponta de cima, alinhada com ela. */}
+        <PolarRadiusAxis
+          angle={90}
+          domain={[0, 10]}
+          tickCount={6}
+          axisLine={false}
+          tick={{ fontSize: 10, fill: CHART_THEME.axisFaint }}
+        />
         <Tooltip
           contentStyle={CHART_TOOLTIP_STYLE}
           labelStyle={{ color: CHART_THEME.text }}
