@@ -1,5 +1,6 @@
 import { BarChart3, Coins, Scale } from "lucide-react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { BrandMark } from "@/components/layout/brand-mark";
 
@@ -21,7 +22,19 @@ const FEATURES = [
   },
 ];
 
-export default function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ error_code?: string; error?: string }>;
+}) {
+  // Link de e-mail com erro que o Supabase devolveu para a página inicial (ex.: link já usado ou vencido).
+  const { error_code, error } = await searchParams;
+  if (error_code || error) {
+    redirect(
+      `/login?error=${encodeURIComponent("Este link já foi usado ou expirou. Se você já confirmou o e-mail, é só entrar com e-mail e senha.")}`
+    );
+  }
+
   return (
     <div className="flex flex-1 flex-col">
       <section className="relative isolate overflow-hidden bg-ink-deep">

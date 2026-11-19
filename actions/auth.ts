@@ -60,7 +60,7 @@ export async function signUp(formData: FormData) {
   const { email, password } = parsed.data;
 
   const supabase = await createClient();
-  const origin = (await headers()).get("origin");
+  const origin = process.env.NEXT_PUBLIC_APP_URL || (await headers()).get("origin");
 
   const { error } = await supabase.auth.signUp({
     email,
@@ -96,7 +96,7 @@ export async function requestPasswordReset(formData: FormData) {
     redirect(`/esqueci-senha?error=${encodeURIComponent(parsed.error.issues[0]?.message ?? "E-mail inválido.")}`);
   }
 
-  const origin = (await headers()).get("origin");
+  const origin = process.env.NEXT_PUBLIC_APP_URL || (await headers()).get("origin");
   const supabase = await createClient();
 
   const { error } = await supabase.auth.resetPasswordForEmail(parsed.data.email, {
