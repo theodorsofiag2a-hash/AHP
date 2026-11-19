@@ -39,6 +39,14 @@ export async function executeAhpRun(modelId: string, sliderValues: number[]): Pr
     .in("pillar_id", pillarIds);
   // Triagem não pontua; no trial, só os parâmetros liberados contam (os demais ficam de fora do cálculo).
   const subcriteria = (subcriteriaRaw ?? []).filter((s) => isScoring(s, trial));
+  if (subcriteria.length === 0) {
+    return {
+      ok: false,
+      error: trial
+        ? "Este modelo não está disponível na versão gratuita. Fale com a G2A."
+        : "O modelo não tem parâmetros configurados.",
+    };
+  }
 
   const { data: alternativesRaw } = await supabase
     .from("ahp_alternatives")

@@ -9,6 +9,10 @@ import { RankingTable } from "@/components/ahp/ranking-table";
 import { ExportCsvButton } from "@/components/ahp/export-csv-button";
 import { GenerateReportCard } from "@/components/ahp/generate-report-card";
 import { reportAppliesToModel } from "@/lib/report/applies";
+import { TrialResultNotice } from "@/components/ahp/trial-result-notice";
+import { getBillingSummary } from "@/lib/billing/user-plan";
+import { isTrialBilling } from "@/lib/billing/trial";
+import { SCREENING } from "@/lib/ahp/scoring";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -29,10 +33,13 @@ export default async function RunResultsPage({
 
   const { data: model } = await supabase
     .from("ahp_models")
-    .select("id, name")
+    .select("id, name, category")
     .eq("id", modelId)
     .maybeSingle();
   if (!model) notFound();
+
+  const trial = isTrialBilling(await getBillingSummary(user.userId));
+  const withReport = reportAppliesToModel(model);
 
   const { data: run } = await supabase
     .from("ahp_runs")
@@ -49,6 +56,17 @@ export default async function RunResultsPage({
     .eq("model_id", modelId)
     .order("sort_order", { ascending: true });
   const pillarNameById = new Map((pillars ?? []).map((p) => [p.id, p.name]));
+
+  // Quantos parâmetros pontuam no modelo e quantos a versão gratuita usa (para o aviso do trial).
+  const { data: subFlags } = (pillars ?? []).length
+    ? await supabase
+        .from("ahp_subcriteria")
+        .select("score_mode, trial")
+        .in("pillar_id", (pillars ?? []).map((p) => p.id))
+    : { data: [] as { score_mode: string; trial: boolean }[] };
+  const scoringFlags = (subFlags ?? []).filter((s) => s.score_mode !== SCREENING);
+  const totalParams = scoringFlags.length;
+  const trialParams = scoringFlags.filter((s) => s.trial).length;
 
   const { data: results } = await supabase
     .from("ahp_run_results")
@@ -189,7 +207,16 @@ export default async function RunResultsPage({
         </Card>
       </div>
 
-      {reportAppliesToModel(model.name) && (
+      {trial && (
+        <TrialResultNotice
+          trialParams={trialParams}
+          totalParams={totalParams}
+          withReport={withReport}
+          userEmail={user.userEmail ?? undefined}
+        />
+      )}
+
+      {withReport && !trial && (
         <GenerateReportCard
           modelId={model.id}
           runId={run.id}

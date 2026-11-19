@@ -90,6 +90,17 @@ export default async function ModelRunPage({
         <ContactG2a subject={`Configurar estrutura do modelo ${model.name}`} userEmail={user.userEmail ?? undefined} />
       </Blocked>
     );
+  } else if (subcriterionIds.length === 0) {
+    content = (
+      <Blocked title={trial ? "Este modelo não está disponível na versão gratuita" : "Este modelo não tem parâmetros configurados"}>
+        <p className="text-sm text-text-muted">
+          {trial
+            ? "A versão gratuita libera os parâmetros do modelo de Projeto. Este modelo fica disponível na versão paga."
+            : "A estrutura do modelo é definida pela G2A."}
+        </p>
+        <ContactG2a label="Falar com a G2A" subject={`Acesso ao modelo ${model.name}`} userEmail={user.userEmail ?? undefined} />
+      </Blocked>
+    );
   } else if (alternativesList.length < MIN_ALTERNATIVES_TO_RUN) {
     content = (
       <Blocked title={`Cadastre ao menos ${MIN_ALTERNATIVES_TO_RUN} alternativas`}>

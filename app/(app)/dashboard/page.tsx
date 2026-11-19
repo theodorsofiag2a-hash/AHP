@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Layers, ArrowRight, Boxes, Coins, Activity } from "lucide-react";
 import { requireUserContext } from "@/lib/user-context";
 import { getBillingSummary } from "@/lib/billing/user-plan";
+import { isTrialBilling } from "@/lib/billing/trial";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
 import { ContactG2a } from "@/components/layout/contact-g2a";
@@ -43,7 +44,9 @@ export default async function DashboardPage() {
           icon: Coins,
           href: "/billing",
         }
-      : { label: "Créditos restantes", value: billing.creditBalance, icon: Coins, href: "/billing" },
+      : isTrialBilling(billing)
+        ? { label: "Versão gratuita · simulações", value: "Ilimitadas", icon: Coins, href: "/billing" }
+        : { label: "Créditos restantes", value: billing.creditBalance, icon: Coins, href: "/billing" },
     { label: "Execuções este mês", value: runsThisMonth ?? 0, icon: Activity, href: null },
   ];
 

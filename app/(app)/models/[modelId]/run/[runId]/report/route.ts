@@ -3,6 +3,8 @@ import { requireUserContext } from "@/lib/user-context";
 import { createClient } from "@/lib/supabase/server";
 import { buildReportData, type ReportInput } from "@/lib/report/build-data";
 import { reportAppliesToModel } from "@/lib/report/applies";
+import { getBillingSummary } from "@/lib/billing/user-plan";
+import { isTrialBilling } from "@/lib/billing/trial";
 import { loadConnections } from "@/lib/report/connections";
 import { renderCharts } from "@/lib/report/charts";
 import { renderReport } from "@/lib/report/render";
@@ -51,11 +53,14 @@ export async function POST(
 
   const { data: model } = await supabase
     .from("ahp_models")
-    .select("id, name")
+    .select("id, name, category")
     .eq("id", modelId)
     .maybeSingle();
   if (!model) return fail("Modelo não encontrado.", 404);
-  if (!reportAppliesToModel(model.name)) return fail("Este modelo não tem relatório de priorização.", 400);
+  if (!reportAppliesToModel(model)) return fail("Este modelo não tem relatório de priorização.", 400);
+  if (isTrialBilling(await getBillingSummary(user.userId))) {
+    return fail("O relatório está disponível na versão paga. Fale com a G2A.", 403);
+  }
 
   const { data: run } = await supabase
     .from("ahp_runs")

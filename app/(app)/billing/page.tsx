@@ -9,6 +9,7 @@ import { CheckoutReturnBanner, type CheckoutReturn } from "@/components/billing/
 import { type PurchaseBlock } from "@/components/billing/purchase-dialog";
 import { buttonClasses } from "@/components/ui/button";
 import { getCreditBalance, getCreditTransactions } from "@/lib/credits";
+import { isTrialBilling } from "@/lib/billing/trial";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ContactG2a } from "@/components/layout/contact-g2a";
 import { TransactionHistoryTable } from "@/components/billing/transaction-history-table";
@@ -121,10 +122,20 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
               <div className="icon-badge-gold h-12 w-12">
                 <Coins className="h-6 w-6" />
               </div>
-              <div>
-                <p className="text-3xl font-semibold tabular-nums">{balance}</p>
-                <p className="text-sm text-text-muted">{balance === 1 ? "crédito disponível" : "créditos disponíveis"}</p>
-              </div>
+              {isTrialBilling(summary) ? (
+                <div>
+                  <p className="text-xl font-semibold">Versão gratuita</p>
+                  <p className="text-sm text-text-muted">
+                    Simulações ilimitadas, só com os parâmetros liberados. Relatório em Word e análise completa na versão
+                    paga.
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-3xl font-semibold tabular-nums">{balance}</p>
+                  <p className="text-sm text-text-muted">{balance === 1 ? "crédito disponível" : "créditos disponíveis"}</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}

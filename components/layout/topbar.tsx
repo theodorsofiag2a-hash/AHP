@@ -6,6 +6,7 @@ import { Coins, LogOut, Menu, Settings, ChevronDown } from "lucide-react";
 import { signOut } from "@/actions/auth";
 import { Badge } from "@/components/ui/badge";
 import { planBadge, type BillingSummary } from "@/lib/billing/plan-summary";
+import { isTrialBilling } from "@/lib/billing/trial";
 
 export function Topbar({
   userName,
@@ -90,6 +91,11 @@ export function Topbar({
               </Badge>
             );
           })()
+        ) : isTrialBilling(billing) ? (
+          <Badge variant="gold" className="cursor-pointer">
+            <Coins className="h-3 w-3" />
+            Versão gratuita
+          </Badge>
         ) : (
           <Badge variant="gold" className="cursor-pointer">
             <Coins className="h-3 w-3" />
