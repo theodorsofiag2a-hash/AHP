@@ -1,7 +1,7 @@
 "use client";
 
-import { FormEvent, useState } from "react";
-import { signUp } from "@/actions/auth";
+import { FormEvent, useActionState, useState } from "react";
+import { signUp, type SignUpState } from "@/actions/auth";
 import { Input, Label } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { SubmitButton } from "@/components/ui/submit-button";
@@ -11,7 +11,9 @@ import { cn } from "@/lib/utils";
 const MISMATCH = "As senhas não coincidem.";
 
 export function SignupForm() {
+  const [state, formAction] = useActionState<SignUpState, FormData>(signUp, {});
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
@@ -56,12 +58,17 @@ export function SignupForm() {
 
   return (
     <form
-      action={signUp}
+      action={formAction}
       onSubmit={handleSubmit}
       onInvalidCapture={handleInvalid}
       onInput={handleInput}
       className="flex flex-col gap-4"
     >
+      {state.error && (
+        <p role="alert" className="rounded-md border border-danger/30 bg-danger-soft px-3 py-2 text-sm text-danger">
+          {state.error}
+        </p>
+      )}
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="email">E-mail</Label>
         <Input
@@ -71,6 +78,8 @@ export function SignupForm() {
           placeholder="voce@empresa.com"
           autoComplete="email"
           required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
           className={cn(errors.email && "border-danger")}
         />
         {errors.email && <p className="text-xs text-danger">{errors.email}</p>}

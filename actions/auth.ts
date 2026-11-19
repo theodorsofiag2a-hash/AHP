@@ -3,6 +3,7 @@
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { signUpErrorMessage } from "@/lib/auth-errors";
 import {
   RECOVERY_COOKIE,
   RECOVERY_COOKIE_MAX_AGE_SECONDS,
@@ -45,7 +46,10 @@ export async function signIn(formData: FormData) {
   redirect("/dashboard");
 }
 
-export async function signUp(formData: FormData) {
+export type SignUpState = { error?: string };
+
+/** Compatível com useActionState: o erro volta para o formulário, que mantém o que foi digitado. */
+export async function signUp(_prevState: SignUpState, formData: FormData): Promise<SignUpState> {
   const parsed = signUpSchema.safeParse({
     email: String(formData.get("email") ?? "").trim(),
     password: String(formData.get("password") ?? ""),
@@ -53,8 +57,7 @@ export async function signUp(formData: FormData) {
   });
 
   if (!parsed.success) {
-    const message = parsed.error.issues[0]?.message ?? "Dados inválidos.";
-    redirect(`/signup?error=${encodeURIComponent(message)}`);
+    return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   }
 
   const { email, password } = parsed.data;
@@ -71,9 +74,9 @@ export async function signUp(formData: FormData) {
   });
 
   if (error) {
-    // Mensagem única para qualquer falha de signup — inclusive "e-mail já cadastrado" —
-    // para não confirmar a existência de uma conta a quem não é o dono dela.
-    redirect(`/signup?error=${encodeURIComponent(GENERIC_AUTH_ERROR)}`);
+    // Sem o e-mail no log: só o código, para diagnosticar pelos logs da Vercel.
+    console.error("[auth] cadastro recusado pelo Supabase", error.code ?? "-", error.status ?? "-");
+    return { error: signUpErrorMessage(error) };
   }
 
   redirect("/signup/verifique-seu-email");
