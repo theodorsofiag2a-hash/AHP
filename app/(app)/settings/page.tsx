@@ -4,7 +4,10 @@ import { BillingProfileForm, EMPTY_BILLING_PROFILE } from "@/components/billing/
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
-export default async function SettingsPage() {
+export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ voltar?: string }> }) {
+  const { voltar } = await searchParams;
+  // Só um destino conhecido: a página de planos (de onde a contratação manda preencher os dados).
+  const returnTo = voltar === "planos" ? "/billing" : undefined;
   const user = await requireUserContext();
   const supabase = await createClient();
 
@@ -35,6 +38,7 @@ export default async function SettingsPage() {
           </CardHeader>
           <CardContent>
             <BillingProfileForm
+              returnTo={returnTo}
               initial={
                 billing
                   ? {

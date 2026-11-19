@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { saveBillingProfile } from "@/actions/billing-profile";
@@ -45,7 +46,15 @@ const FIELDS: FieldDef[] = [
   { key: "province", label: "Bairro" },
 ];
 
-export function BillingProfileForm({ initial }: { initial: BillingProfileFormValues }) {
+export function BillingProfileForm({
+  initial,
+  returnTo,
+}: {
+  initial: BillingProfileFormValues;
+  /** Para onde voltar depois de salvar (ex.: a contratação que pediu os dados). */
+  returnTo?: string;
+}) {
+  const router = useRouter();
   const [values, setValues] = useState(initial);
   const [isPending, startTransition] = useTransition();
 
@@ -58,6 +67,7 @@ export function BillingProfileForm({ initial }: { initial: BillingProfileFormVal
         return;
       }
       toast.success("Dados de cobrança salvos.");
+      if (returnTo) router.push(returnTo);
     });
   }
 

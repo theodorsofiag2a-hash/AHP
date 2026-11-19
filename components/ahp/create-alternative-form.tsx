@@ -6,19 +6,20 @@ import { createAlternative, type CreateAlternativeState } from "@/actions/altern
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
 
-export function CreateAlternativeForm({ modelId }: { modelId: string }) {
+export function CreateAlternativeForm({ modelId, autoFocus = false }: { modelId: string; autoFocus?: boolean }) {
   const [state, formAction] = useActionState<CreateAlternativeState, FormData>(
     createAlternative.bind(null, modelId),
     {}
   );
 
   return (
-    <form action={formAction} className="flex max-w-md flex-col gap-2">
+    <form id="nova-alternativa" action={formAction} className="flex max-w-md scroll-mt-20 flex-col gap-2">
       <div className="flex items-center gap-2">
         <Input
           name="name"
           placeholder="Nome da alternativa (ex: Fornecedor A)"
           required
+          autoFocus={autoFocus}
           maxLength={120}
           aria-label="Nome da alternativa"
           aria-invalid={state.error ? true : undefined}

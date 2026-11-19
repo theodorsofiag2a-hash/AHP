@@ -200,7 +200,17 @@ export function EvaluationForm({
         await saveEvaluation(modelId, alternativeId, selections, numericValues());
         unsavedSelections.current = null;
         setAutosaveStatus("saved");
+        const missing = totalSubcriteria - answered;
+        if (missing > 0) {
+          toast.warning(
+            `Ficha salva, mas ${missing === 1 ? "falta 1 item" : `faltam ${missing} itens`}. Os campos em vermelho precisam de resposta.`
+          );
+          const firstIncomplete = pillars.find((p) => p.subcriteria.some((s) => counts(s) && !isAnswered(s)));
+          if (firstIncomplete) scrollToPillar(firstIncomplete.id);
+          return;
+        }
         toast.success("Ficha de avaliação salva.");
+        router.push(`/models/${modelId}/alternatives?salva=${alternativeId}`);
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "Falha ao salvar avaliação.");
       }
@@ -499,7 +509,7 @@ export function EvaluationForm({
       <div className="flex items-center justify-end border-t border-border-subtle pt-4">
         <Button onClick={handleSave} disabled={isPending}>
           {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-          Salvar ficha
+          Salvar e concluir ficha
         </Button>
       </div>
     </div>

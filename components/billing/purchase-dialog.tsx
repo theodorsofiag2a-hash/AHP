@@ -60,7 +60,7 @@ export function PurchaseButton({
         </Button>
         <p className="text-xs text-text-muted">{BLOCK_MESSAGES[block]}</p>
         {block === "no_profile" && (
-          <Link href="/settings/organization" className="text-xs font-medium text-gold-700 underline">
+          <Link href="/settings?voltar=planos" className="text-xs font-medium text-gold-700 underline">
             Preencher dados de cobrança
           </Link>
         )}

@@ -10,7 +10,7 @@ const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/models", label: "Modelos", icon: Boxes },
   { href: "/billing", label: "Créditos e planos", icon: Wallet },
-  { href: "/settings/organization", label: "Configurações", icon: Settings },
+  { href: "/settings", label: "Configurações", icon: Settings },
 ];
 
 export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
