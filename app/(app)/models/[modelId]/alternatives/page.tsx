@@ -18,6 +18,7 @@ import { buttonClasses } from "@/components/ui/button";
 import { isTrialBilling } from "@/lib/billing/trial";
 import { isScoring } from "@/lib/ahp/scoring";
 import { MIN_ALTERNATIVES_TO_RUN, alternativeProgress } from "@/lib/ahp/readiness";
+import { alternativeNoun } from "@/lib/ahp/alternative-noun";
 
 const VIABILITY_BADGE = {
   ok: { label: "Conexão viável", variant: "success" },
@@ -39,7 +40,7 @@ export default async function AlternativesPage({
 
   const { data: model } = await supabase
     .from("ahp_models")
-    .select("id, name, trial_available")
+    .select("id, name, category, trial_available")
     .eq("id", modelId)
     .maybeSingle();
   if (!model) notFound();
@@ -77,12 +78,14 @@ export default async function AlternativesPage({
   const readyToRun = completeCount >= MIN_ALTERNATIVES_TO_RUN;
   const saved = salva ? (alternatives ?? []).find((a) => a.id === salva) : undefined;
   const canCreate = !planBlocked && !planFull;
+  const noun = alternativeNoun(model.category);
+  const missing = MIN_ALTERNATIVES_TO_RUN - completeCount;
 
   return (
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-page-title">{model.name}</h1>
-        <p className="text-sm text-text-muted">Cadastre as alternativas avaliadas neste modelo.</p>
+        <p className="text-sm text-text-muted">Cadastre {noun.article}s {noun.plural} avaliad{noun.article}s neste modelo.</p>
       </div>
 
       <ModelTabs modelId={model.id} />
@@ -96,8 +99,8 @@ export default async function AlternativesPage({
                 {saved && <p className="font-medium text-text-primary">Ficha de “{saved.name}” concluída.</p>}
                 <p className="text-sm text-text-muted">
                   {readyToRun
-                    ? `${completeCount} fichas completas. Você já pode gerar o resultado, ou cadastrar mais alternativas.`
-                    : `Cadastre mais ${MIN_ALTERNATIVES_TO_RUN - completeCount === 1 ? "1 alternativa" : `${MIN_ALTERNATIVES_TO_RUN - completeCount} alternativas`} para gerar o resultado.`}
+                    ? `${completeCount} fichas completas. Você já pode gerar o resultado, ou cadastrar mais ${noun.plural}.`
+                    : `Cadastre mais ${missing === 1 ? `1 ${noun.singular}` : `${missing} ${noun.plural}`} para gerar o resultado.`}
                 </p>
               </div>
             </div>
@@ -105,7 +108,7 @@ export default async function AlternativesPage({
               {canCreate && (
                 <a href="#nova-alternativa" className={buttonClasses(readyToRun ? "secondary" : "primary", "sm")}>
                   <Plus className="h-4 w-4" />
-                  Cadastrar outra
+                  {noun.article === "a" ? "Cadastrar outra" : "Cadastrar outro"}
                 </a>
               )}
               {readyToRun && (
@@ -147,7 +150,7 @@ export default async function AlternativesPage({
           </CardContent>
         </Card>
       ) : (
-        <CreateAlternativeForm modelId={modelId} autoFocus={Boolean(saved) && !readyToRun} />
+        <CreateAlternativeForm modelId={modelId} autoFocus={Boolean(saved) && !readyToRun} noun={noun} />
       )}
 
       {!alternatives || alternatives.length === 0 ? (
@@ -156,8 +159,10 @@ export default async function AlternativesPage({
             <div className="icon-badge-gold h-12 w-12">
               <ClipboardList className="h-6 w-6" />
             </div>
-            <CardTitle>Nenhuma alternativa ainda</CardTitle>
-            <CardDescription>Adicione a primeira alternativa acima para começar a avaliar.</CardDescription>
+            <CardTitle>Nenhum{noun.article === "a" ? "a" : ""} {noun.singular} ainda</CardTitle>
+            <CardDescription>
+              Adicione {noun.article} primeir{noun.article} {noun.singular} acima para começar a avaliar.
+            </CardDescription>
           </CardContent>
         </Card>
       ) : (

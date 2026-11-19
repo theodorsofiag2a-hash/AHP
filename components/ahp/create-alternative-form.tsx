@@ -5,8 +5,17 @@ import { Plus } from "lucide-react";
 import { createAlternative, type CreateAlternativeState } from "@/actions/alternatives";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
+import type { AlternativeNoun } from "@/lib/ahp/alternative-noun";
 
-export function CreateAlternativeForm({ modelId, autoFocus = false }: { modelId: string; autoFocus?: boolean }) {
+export function CreateAlternativeForm({
+  modelId,
+  autoFocus = false,
+  noun,
+}: {
+  modelId: string;
+  autoFocus?: boolean;
+  noun: AlternativeNoun;
+}) {
   const [state, formAction] = useActionState<CreateAlternativeState, FormData>(
     createAlternative.bind(null, modelId),
     {}
@@ -17,11 +26,11 @@ export function CreateAlternativeForm({ modelId, autoFocus = false }: { modelId:
       <div className="flex items-center gap-2">
         <Input
           name="name"
-          placeholder="Nome da alternativa (ex: Fornecedor A)"
+          placeholder={`Nome d${noun.article} ${noun.singular} (ex: ${noun.example})`}
           required
           autoFocus={autoFocus}
           maxLength={120}
-          aria-label="Nome da alternativa"
+          aria-label={`Nome d${noun.article} ${noun.singular}`}
           aria-invalid={state.error ? true : undefined}
         />
         <SubmitButton size="md">
