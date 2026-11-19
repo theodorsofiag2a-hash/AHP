@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { forgotPasswordSchema, resetPasswordSchema } from "./password";
+import { forgotPasswordSchema, resetPasswordSchema, signUpSchema } from "./password";
 
 describe("forgotPasswordSchema", () => {
   it("aceita e-mail válido e apara espaços", () => {
@@ -23,5 +23,23 @@ describe("resetPasswordSchema", () => {
     const r = resetPasswordSchema.safeParse({ password: "12345678", confirmPassword: "12345679" });
     expect(r.success).toBe(false);
     if (!r.success) expect(r.error.issues[0].message).toBe("As senhas não coincidem.");
+  });
+});
+
+describe("signUpSchema", () => {
+  const base = { email: "a@b.com", password: "12345678" };
+
+  it("aceita quando as duas senhas são iguais", () => {
+    expect(signUpSchema.safeParse({ ...base, confirmPassword: "12345678" }).success).toBe(true);
+  });
+
+  it("recusa quando a senha digitada de novo é diferente", () => {
+    const r = signUpSchema.safeParse({ ...base, confirmPassword: "12345679" });
+    expect(r.success).toBe(false);
+    expect(r.error?.issues[0]?.message).toBe("As senhas não coincidem.");
+  });
+
+  it("recusa senha curta", () => {
+    expect(signUpSchema.safeParse({ ...base, password: "123", confirmPassword: "123" }).success).toBe(false);
   });
 });

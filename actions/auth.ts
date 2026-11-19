@@ -2,13 +2,13 @@
 
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import {
   RECOVERY_COOKIE,
   RECOVERY_COOKIE_MAX_AGE_SECONDS,
   RECOVERY_COOKIE_PATH,
   forgotPasswordSchema,
+  signUpSchema,
   resetPasswordSchema,
 } from "@/lib/password";
 
@@ -31,14 +31,6 @@ function friendlyLoginError(message: string): string {
   return GENERIC_AUTH_ERROR;
 }
 
-const signUpSchema = z.object({
-  email: z.string().trim().min(1, "Informe seu e-mail.").email("E-mail inválido."),
-  // O servidor é a validação que vale de verdade; o minLength do formulário é só UX
-  // (ver docs/SECURITY_AUDIT.md, achado S8 — antes disto, um POST direto contornava o
-  // mínimo de 8 caracteres do HTML).
-  password: z.string().min(8, "A senha precisa de pelo menos 8 caracteres."),
-});
-
 export async function signIn(formData: FormData) {
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
@@ -57,6 +49,7 @@ export async function signUp(formData: FormData) {
   const parsed = signUpSchema.safeParse({
     email: String(formData.get("email") ?? "").trim(),
     password: String(formData.get("password") ?? ""),
+    confirmPassword: String(formData.get("confirmPassword") ?? ""),
   });
 
   if (!parsed.success) {
