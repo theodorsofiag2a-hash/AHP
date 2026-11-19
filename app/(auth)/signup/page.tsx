@@ -1,7 +1,5 @@
 import Link from "next/link";
-import { signInWithGoogle } from "@/actions/auth";
 import { SignupForm } from "@/components/auth/signup-form";
-import { SubmitButton } from "@/components/ui/submit-button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default async function SignupPage({
@@ -25,18 +23,6 @@ export default async function SignupPage({
         )}
 
         <SignupForm />
-
-        <div className="flex items-center gap-3">
-          <div className="h-px flex-1 bg-border-subtle" />
-          <span className="text-xs text-text-faint">ou</span>
-          <div className="h-px flex-1 bg-border-subtle" />
-        </div>
-
-        <form action={signInWithGoogle}>
-          <SubmitButton variant="secondary" className="w-full">
-            Continuar com Google
-          </SubmitButton>
-        </form>
 
         <p className="text-center text-sm text-text-muted">
           Já tem conta?{" "}
