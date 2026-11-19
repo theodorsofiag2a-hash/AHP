@@ -223,7 +223,7 @@ export default async function AlternativeEvaluationPage({
           {trial && (
             <p className="rounded-md border border-gold-500/30 bg-gold-soft px-3 py-2 text-sm text-gold-700">
               Versão gratuita: rodadas ilimitadas, só com os parâmetros liberados. Os demais aparecem borrados e ficam
-              disponíveis nos planos pagos.
+              disponíveis na versão completa (contratação sob consulta com a G2A).
             </p>
           )}
           {usesMunicipality && (

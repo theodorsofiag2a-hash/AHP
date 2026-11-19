@@ -316,7 +316,7 @@ export function EvaluationForm({
                           </div>
                           <div className="absolute inset-0 flex items-center justify-center gap-1.5 text-xs font-medium text-text-muted">
                             <Lock className="h-3.5 w-3.5" aria-hidden="true" />
-                            Disponível nos planos pagos
+                            Disponível na versão completa
                           </div>
                         </div>
                       );

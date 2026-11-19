@@ -6,14 +6,12 @@ import { CurrentPlanCard } from "@/components/billing/current-plan-card";
 import { isBillingEnabledFor } from "@/lib/billing/config";
 import { isAsaasCheckoutLink } from "@/lib/billing/purchase";
 import { CheckoutReturnBanner, type CheckoutReturn } from "@/components/billing/checkout-return-banner";
-import { PurchaseButton, type PurchaseBlock } from "@/components/billing/purchase-dialog";
+import { type PurchaseBlock } from "@/components/billing/purchase-dialog";
 import { buttonClasses } from "@/components/ui/button";
 import { getCreditBalance, getCreditTransactions } from "@/lib/credits";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ContactG2a } from "@/components/layout/contact-g2a";
 import { TransactionHistoryTable } from "@/components/billing/transaction-history-table";
-import { PlanCard } from "@/components/billing/plan-card";
-import { PLANS } from "@/lib/plans";
 import type { PaidOrderInput } from "@/lib/billing/history";
 import { PlanOrdersTable } from "@/components/billing/plan-orders-table";
 
@@ -93,8 +91,8 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-page-title">Créditos e planos</h1>
-        <p className="text-sm text-text-muted">Acompanhe seu saldo, conheça os planos e veja o histórico de uso.</p>
+        <h1 className="text-page-title">Créditos e contratação</h1>
+        <p className="text-sm text-text-muted">Acompanhe seu saldo e o histórico de uso.</p>
       </div>
 
       {returnStatus && <CheckoutReturnBanner status={returnStatus} planActive={planActive} />}
@@ -137,42 +135,17 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
               <Handshake className="h-6 w-6" />
             </div>
             <div className="flex-1">
-              <p className="font-medium text-text-primary">Como contratar</p>
+              <p className="font-medium text-text-primary">Contratação sob consulta</p>
               <p className="text-sm text-text-muted">
-                Escolha um plano abaixo. Após a confirmação, os créditos são liberados automaticamente na sua conta.
+                A versão completa é contratada sob consulta. Fale com a G2A para montar a proposta da sua empresa.
               </p>
               <div className="mt-3">
-                <ContactG2a size="sm" label="Solicitar créditos" subject="Solicitação de créditos (AHP)" userEmail={user.userEmail ?? undefined} />
+                <ContactG2a size="sm" label="Falar com a G2A" subject="Contratação AHP (sob consulta)" userEmail={user.userEmail ?? undefined} />
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
-
-      <section aria-labelledby="planos-titulo" className="flex flex-col gap-4">
-        <div>
-          <h2 id="planos-titulo" className="text-section-label">
-            Planos
-          </h2>
-          <p className="mt-1 text-sm text-text-muted">
-            Cada plano é definido pelo número de projetos que você precisa avaliar. Todos valem por 6 meses a partir da
-            contratação, e o pagamento pode ser parcelado em até 3x.
-          </p>
-        </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {PLANS.map((plan) => (
-            <PlanCard
-              key={plan.code}
-              plan={plan}
-              userEmail={user.userEmail ?? undefined}
-              action={billingEnabled ? <PurchaseButton plan={plan} block={block} currentPlanName={planActive && summary.mode === "plan" ? summary.planName : null} /> : undefined}
-            />
-          ))}
-        </div>
-        <p className="text-xs text-text-faint">
-          Valores em reais. Condições comerciais sujeitas à confirmação da G2A no momento da contratação.
-        </p>
-      </section>
 
       <Card>
         <CardHeader>

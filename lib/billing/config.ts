@@ -4,6 +4,12 @@ import "server-only";
  * Interruptor geral das telas e ações de compra (integração Asaas). Fica desligado em produção até o
  * go-live, para que o merge na master não publique a compra antes da hora. Só o valor exato "true" liga.
  */
+/**
+ * Compra online (Checkout Asaas) fechada: a contratação é sob consulta, com a G2A. O processamento de
+ * pagamentos e renovações já existentes continua ativo (webhook e cancelamento de renovação).
+ */
+export const ONLINE_PURCHASE_OPEN = false;
+
 export function isBillingEnabled(): boolean {
   return process.env.BILLING_ENABLED === "true";
 }

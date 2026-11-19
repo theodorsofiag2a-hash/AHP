@@ -5,7 +5,7 @@ import { z } from "zod";
 import { AsaasApiError, getAsaasClient, getAsaasEnv } from "@/lib/asaas/client";
 import { profileFromRow } from "@/lib/billing/billing-profile";
 import { CHECKOUT_ITEM_IMAGE_BASE64 } from "@/lib/billing/checkout-image";
-import { isBillingEnabledFor } from "@/lib/billing/config";
+import { isBillingEnabledFor, ONLINE_PURCHASE_OPEN } from "@/lib/billing/config";
 import {
   CHECKOUT_MINUTES_TO_EXPIRE,
   MODALITIES,
@@ -43,6 +43,9 @@ export async function startPlanPurchase(input: {
   renew?: boolean;
 }): Promise<StartPlanPurchaseResult> {
   const user = await requireUserContext();
+  if (!ONLINE_PURCHASE_OPEN) {
+    return { ok: false, error: "A contratação é sob consulta. Fale com a G2A." };
+  }
   if (!isBillingEnabledFor(user.userEmail ?? "")) {
     return { ok: false, error: "A contratação online ainda não está disponível." };
   }

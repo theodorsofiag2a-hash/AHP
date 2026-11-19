@@ -2,7 +2,8 @@ import { CalendarClock, FolderKanban, Infinity as InfinityIcon, Repeat, ShieldCh
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { CancelRenewalButton } from "@/components/billing/cancel-renewal-button";
-import { PurchaseButton, type PurchaseBlock } from "@/components/billing/purchase-dialog";
+import { type PurchaseBlock } from "@/components/billing/purchase-dialog";
+import { ContactG2a } from "@/components/layout/contact-g2a";
 import { PLAN_GRACE_DAYS } from "@/lib/billing/entitlements";
 import { daysUntil, isRenewalWindowOpen } from "@/lib/billing/renewal-window";
 import { PLANS } from "@/lib/plans";
@@ -13,6 +14,7 @@ export function CurrentPlanCard({
   summary,
   billingEnabled = false,
   canManage = false,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- mantido até a compra online voltar
   purchaseBlock = null,
 }: {
   summary: PlanSummary;
@@ -99,10 +101,10 @@ export function CurrentPlanCard({
               <>
                 <p className="text-sm text-text-muted">
                   {daysLeft >= 0
-                    ? `Seu plano vence em ${daysLeft} ${daysLeft === 1 ? "dia" : "dias"}. Renove para continuar.`
-                    : "Seu plano venceu. Renove para voltar a usar."}
+                    ? `Seu plano vence em ${daysLeft} ${daysLeft === 1 ? "dia" : "dias"}. A renovação é sob consulta.`
+                    : "Seu plano venceu. A renovação é sob consulta."}
                 </p>
-                <PurchaseButton plan={renewalPlan} block={purchaseBlock} renewal />
+                <ContactG2a size="sm" label="Falar com a G2A" subject="Renovação AHP (sob consulta)" />
               </>
             ) : (
               <p className="text-sm text-text-muted">A renovação abre 30 dias antes do vencimento.</p>
