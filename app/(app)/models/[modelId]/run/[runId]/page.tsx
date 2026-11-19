@@ -201,7 +201,7 @@ export default async function RunResultsPage({
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">Impressão digital — Top 3</CardTitle>
+            <CardTitle className="text-sm">Gráfico de teia — Top 3</CardTitle>
           </CardHeader>
           <CardContent>
             <AhpRadarChart data={radarData} seriesNames={top3.map((a) => a.name)} />

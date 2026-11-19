@@ -133,7 +133,7 @@ export function radarChartSvg(data: ReportChartsData["radar"]): string {
     })
     .join("");
   const items = data.series.map((s, k) => ({ name: truncate(s.name, 22), color: SERIES_COLORS[k % SERIES_COLORS.length] }));
-  return `${svgOpen(width, height)}${title("Impressão digital (desempenho 0–10) — Top 3", width)}${rings}${spokes}${ringLabels}${shapes}${labels}${legend(items, width, height - 50)}</svg>`;
+  return `${svgOpen(width, height)}${title("Gráfico de teia (desempenho 0–10) — Top 3", width)}${rings}${spokes}${ringLabels}${shapes}${labels}${legend(items, width, height - 50)}</svg>`;
 }
 
 export function compositionChartSvg(data: ReportChartsData["composition"]): string {
