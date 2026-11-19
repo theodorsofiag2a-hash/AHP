@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useId, useRef, useState, useTransition } from "react";
-import { Loader2, Check, AlertCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Loader2, Check, AlertCircle, AlertTriangle, Lock } from "lucide-react";
 import { toast } from "sonner";
-import { saveEvaluation } from "@/actions/alternatives";
+import { saveEvaluation, saveLicensingOverride } from "@/actions/alternatives";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +31,27 @@ interface SubcriterionOption {
   relative: boolean;
   unit: string | null;
   scales: ScaleOption[];
+  /** Triagem: informa a classificação da UF, mas não recebe nota. */
+  screening: boolean;
+  /** Versão trial: parâmetro não liberado (aparece borrado). */
+  locked: boolean;
+  /** Complexidade do rito: preenchida pela UF do município, com ajuste manual justificado. */
+  licensing: boolean;
+}
+
+/** Rito de licenciamento da UF do município do projeto, com o contexto da base. */
+export interface LicensingInfo {
+  uf: string | null;
+  riteLabel: string | null;
+  provisional: boolean;
+  agency: string | null;
+  legalBasis: string | null;
+}
+
+export interface LicensingOverrideInfo {
+  reason: string;
+  byEmail: string | null;
+  at: string;
 }
 
 interface PillarOption {
@@ -43,6 +65,8 @@ type SaveStatus = "idle" | "saving" | "saved" | "error";
 /** Barramentos da NT-ONS e regras de preenchimento; só existe em modelos com subcritérios `auto_field`. */
 export interface ConnectionConfig {
   buses: GridBus[];
+  /** UF do município do projeto: a lista de barramentos mostra só os dela. Nulo = todos. */
+  ufFilter: string | null;
   autoSubcriteria: AutoSubcriterion[];
   initialBusId: string | null;
   initialPowerMw: number | null;
@@ -63,6 +87,8 @@ export function EvaluationForm({
   initialSelections,
   initialValues,
   connection,
+  licensingInfo,
+  licensingOverride,
 }: {
   modelId: string;
   alternativeId: string;
@@ -70,7 +96,14 @@ export function EvaluationForm({
   initialSelections: Record<string, string>;
   initialValues: Record<string, string>;
   connection?: ConnectionConfig;
+  licensingInfo?: LicensingInfo;
+  licensingOverride?: LicensingOverrideInfo | null;
 }) {
+  const router = useRouter();
+  const [adjusting, setAdjusting] = useState(false);
+  const [adjustScale, setAdjustScale] = useState("");
+  const [adjustReason, setAdjustReason] = useState("");
+  const [adjustError, setAdjustError] = useState<string | null>(null);
   const [selections, setSelections] = useState<Record<string, string>>(initialSelections);
   const [values, setValues] = useState<Record<string, string>>(initialValues);
   // Subcritérios preenchidos pelo barramento nesta sessão (selo "auto"); some ao editar à mão.
@@ -95,8 +128,10 @@ export function EvaluationForm({
   const relativeIds = pillars.flatMap((p) => p.subcriteria.filter((s) => s.relative).map((s) => s.id));
   const isAnswered = (sub: SubcriterionOption) =>
     sub.relative ? parseDecimal(values[sub.id] ?? "") !== null : Boolean(selections[sub.id]);
-  const totalSubcriteria = pillars.reduce((sum, p) => sum + p.subcriteria.length, 0);
-  const answered = pillars.reduce((sum, p) => sum + p.subcriteria.filter(isAnswered).length, 0);
+  // Triagem e parâmetros bloqueados no trial não entram na contagem de preenchimento.
+  const counts = (sub: SubcriterionOption) => !sub.screening && !sub.locked;
+  const totalSubcriteria = pillars.reduce((sum, p) => sum + p.subcriteria.filter(counts).length, 0);
+  const answered = pillars.reduce((sum, p) => sum + p.subcriteria.filter((s) => counts(s) && isAnswered(s)).length, 0);
 
   /** Valores digitados -> número, ou null para apagar (campo vazio ou inválido). */
   function numericValues(): Record<string, number | null> {
@@ -177,8 +212,8 @@ export function EvaluationForm({
       <div className="sticky top-0 z-10 flex flex-col gap-2 bg-bg-base py-3">
         <div className="flex items-center gap-2 overflow-x-auto">
           {pillars.map((pillar) => {
-            const pillarAnswered = pillar.subcriteria.filter(isAnswered).length;
-            const pillarTotal = pillar.subcriteria.length;
+            const pillarAnswered = pillar.subcriteria.filter((s) => counts(s) && isAnswered(s)).length;
+            const pillarTotal = pillar.subcriteria.filter(counts).length;
             const complete = pillarAnswered === pillarTotal;
             return (
               <button
@@ -229,6 +264,7 @@ export function EvaluationForm({
           modelId={modelId}
           alternativeId={alternativeId}
           buses={connection.buses}
+          ufFilter={connection.ufFilter}
           autoSubcriteria={connection.autoSubcriteria}
           initialBusId={connection.initialBusId}
           initialPowerMw={connection.initialPowerMw}
@@ -239,7 +275,8 @@ export function EvaluationForm({
 
       <div className="flex flex-col gap-4">
         {pillars.map((pillar) => {
-          const pillarAnswered = pillar.subcriteria.filter(isAnswered).length;
+          const pillarAnswered = pillar.subcriteria.filter((s) => counts(s) && isAnswered(s)).length;
+          const pillarTotal = pillar.subcriteria.filter(counts).length;
           return (
             <div
               key={pillar.id}
@@ -251,13 +288,143 @@ export function EvaluationForm({
               <Card>
                 <CardHeader className="flex-row items-center justify-between">
                   <CardTitle className="font-ui text-sm uppercase tracking-[0.16em] text-gold-700">{pillar.name}</CardTitle>
-                  <Badge variant={pillarAnswered === pillar.subcriteria.length ? "gold" : "neutral"}>
-                    {pillarAnswered}/{pillar.subcriteria.length}
+                  <Badge variant={pillarAnswered === pillarTotal ? "gold" : "neutral"}>
+                    {pillarAnswered}/{pillarTotal}
                   </Badge>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-4">
                   {pillar.subcriteria.map((sub) => {
                     const unanswered = attemptedSave && !isAnswered(sub);
+                    if (sub.locked) {
+                      return (
+                        <div key={sub.id} className="relative overflow-hidden rounded-md">
+                          <div aria-hidden="true" className="pointer-events-none flex select-none flex-col gap-1.5 opacity-70 blur-sm">
+                            <Label>{sub.name}</Label>
+                            <Select disabled value="">
+                              <option value="">Selecione uma escala</option>
+                            </Select>
+                          </div>
+                          <div className="absolute inset-0 flex items-center justify-center gap-1.5 text-xs font-medium text-text-muted">
+                            <Lock className="h-3.5 w-3.5" aria-hidden="true" />
+                            Disponível nos planos pagos
+                          </div>
+                        </div>
+                      );
+                    }
+                    if (sub.screening) {
+                      return (
+                        <div key={sub.id} className="flex flex-col gap-1.5 rounded-md border border-border-subtle bg-bg-surface-alt p-3">
+                          <div className="flex items-center gap-2">
+                            <Label>{sub.name}</Label>
+                            <Badge variant="neutral">não pontua</Badge>
+                          </div>
+                          {licensingInfo?.riteLabel ? (
+                            <div className="flex flex-col gap-0.5 text-sm text-text-muted">
+                              <p>
+                                {licensingInfo.uf}: rito <strong className="text-text-primary">{licensingInfo.riteLabel}</strong>
+                              </p>
+                              {licensingInfo.agency && <p className="text-xs">Órgão ambiental: {licensingInfo.agency}</p>}
+                              {licensingInfo.legalBasis && <p className="text-xs">Base legal: {licensingInfo.legalBasis}</p>}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-text-muted">
+                              Selecione o município do projeto para ver a regra de licenciamento da UF.
+                            </p>
+                          )}
+                        </div>
+                      );
+                    }
+                    if (sub.licensing) {
+                      const currentScale = sub.scales.find((sc) => sc.id === selections[sub.id]);
+                      return (
+                        <div key={sub.id} className="flex flex-col gap-1.5">
+                          <div className="flex items-center gap-2">
+                            <Label>{sub.name}</Label>
+                            {licensingInfo?.provisional && !licensingOverride && <Badge variant="gold">provisória</Badge>}
+                            {licensingOverride && <Badge variant="neutral">ajustada</Badge>}
+                          </div>
+                          <p className={cn("text-sm", currentScale ? "text-text-primary" : "text-text-faint")}>
+                            {currentScale ? currentScale.description : "Preenchida pelo município do projeto."}
+                          </p>
+                          {licensingInfo?.provisional && !licensingOverride && (
+                            <p className="flex items-start gap-1.5 text-xs text-gold-700">
+                              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                              Rito ainda indefinido nesta UF: a pontuação é provisória. Se souber o rito correto, ajuste abaixo e
+                              registre o motivo.
+                            </p>
+                          )}
+                          {licensingOverride && (
+                            <p className="text-xs text-text-muted">
+                              Ajustada por {licensingOverride.byEmail ?? "usuário"} em{" "}
+                              {new Date(licensingOverride.at).toLocaleString("pt-BR")}: {licensingOverride.reason}
+                            </p>
+                          )}
+                          {!adjusting ? (
+                            <div>
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                disabled={!selections[sub.id]}
+                                onClick={() => {
+                                  setAdjusting(true);
+                                  setAdjustScale(selections[sub.id] ?? "");
+                                  setAdjustReason("");
+                                  setAdjustError(null);
+                                }}
+                              >
+                                Ajustar manualmente
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex flex-col gap-2 rounded-md border border-border-subtle p-3">
+                              <Select value={adjustScale} onChange={(e) => setAdjustScale(e.target.value)}>
+                                {sub.scales.map((scale) => (
+                                  <option key={scale.id} value={scale.id}>
+                                    {scale.description}
+                                  </option>
+                                ))}
+                              </Select>
+                              <Input
+                                value={adjustReason}
+                                onChange={(e) => setAdjustReason(e.target.value)}
+                                placeholder="Justificativa do ajuste (obrigatória)"
+                                maxLength={1000}
+                              />
+                              {adjustError && <p className="text-xs text-danger">{adjustError}</p>}
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  disabled={isPending}
+                                  onClick={() => {
+                                    setAdjustError(null);
+                                    startTransition(async () => {
+                                      try {
+                                        await saveLicensingOverride(modelId, alternativeId, {
+                                          subcriterionId: sub.id,
+                                          scaleId: adjustScale,
+                                          reason: adjustReason,
+                                        });
+                                        setSelections((prev) => ({ ...prev, [sub.id]: adjustScale }));
+                                        setAdjusting(false);
+                                        toast.success("Ajuste registrado.");
+                                        router.refresh();
+                                      } catch (error) {
+                                        setAdjustError(error instanceof Error ? error.message : "Não foi possível salvar o ajuste.");
+                                      }
+                                    });
+                                  }}
+                                >
+                                  Salvar ajuste
+                                </Button>
+                                <Button size="sm" variant="secondary" onClick={() => setAdjusting(false)} disabled={isPending}>
+                                  Cancelar
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
                     if (sub.relative) {
                       const text = values[sub.id] ?? "";
                       const invalid = text.trim() !== "" && parseDecimal(text) === null;

@@ -27,7 +27,10 @@ function sliderLabel(value: number, pillarA: string, pillarB: string) {
 }
 
 /** Como a execução é cobrada: crédito (regime antigo) ou simulação do plano contratado. */
-export type PairwiseUsage = { kind: "credits"; balance: number } | { kind: "plan"; runsRemaining: number | null };
+export type PairwiseUsage =
+  | { kind: "credits"; balance: number }
+  | { kind: "plan"; runsRemaining: number | null }
+  | { kind: "trial" };
 
 export function PairwiseSliders({
   modelId,
@@ -154,13 +157,17 @@ export function PairwiseSliders({
         onClose={() => !isPending && setConfirmOpen(false)}
         title="Gerar resultado?"
         description={
-          usage.kind === "credits"
-            ? `Esta execução usa ${RUN_COST_CREDITS} crédito e não pode ser desfeita.`
-            : "Esta execução conta como uma simulação do seu plano e não pode ser desfeita."
+          usage.kind === "trial"
+            ? "Versão gratuita: rodadas ilimitadas, só com os parâmetros liberados. Não pode ser desfeita."
+            : usage.kind === "credits"
+              ? `Esta execução usa ${RUN_COST_CREDITS} crédito e não pode ser desfeita.`
+              : "Esta execução conta como uma simulação do seu plano e não pode ser desfeita."
         }
       >
         <p className="text-sm text-text-muted">
-          {usage.kind === "credits" ? (
+          {usage.kind === "trial" ? (
+            <>Rodadas ilimitadas na versão gratuita.</>
+          ) : usage.kind === "credits" ? (
             <>
               Saldo: {usage.balance} → <strong className="text-text-primary">{usage.balance - RUN_COST_CREDITS}</strong>{" "}
               {usage.balance - RUN_COST_CREDITS === 1 ? "crédito" : "créditos"}

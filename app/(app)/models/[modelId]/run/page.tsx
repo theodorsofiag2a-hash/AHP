@@ -3,6 +3,8 @@ import { Coins } from "lucide-react";
 import { notFound } from "next/navigation";
 import { requireUserContext } from "@/lib/user-context";
 import { getBillingSummary } from "@/lib/billing/user-plan";
+import { isTrialBilling } from "@/lib/billing/trial";
+import { isScoring } from "@/lib/ahp/scoring";
 import { planBlockMessage, pluralSimulations } from "@/lib/billing/plan-summary";
 import { RUN_COST_CREDITS } from "@/lib/credit-cost";
 import { MIN_ALTERNATIVES_TO_RUN, alternativeProgress, incompleteAlternatives } from "@/lib/ahp/readiness";
@@ -49,13 +51,14 @@ export default async function ModelRunPage({
 
   const [{ data: subcriteria }, { data: alternatives }, billing] = await Promise.all([
     pillarIds.length
-      ? supabase.from("ahp_subcriteria").select("id").in("pillar_id", pillarIds)
-      : Promise.resolve({ data: [] as { id: string }[] }),
+      ? supabase.from("ahp_subcriteria").select("id, score_mode, trial").in("pillar_id", pillarIds)
+      : Promise.resolve({ data: [] as { id: string; score_mode: string; trial: boolean }[] }),
     supabase.from("ahp_alternatives").select("id, name").eq("model_id", modelId).order("name"),
     getBillingSummary(user.userId),
   ]);
 
-  const subcriterionIds = (subcriteria ?? []).map((s) => s.id);
+  const trial = isTrialBilling(billing);
+  const subcriterionIds = (subcriteria ?? []).filter((s) => isScoring(s, trial)).map((s) => s.id);
   const { data: scores } = subcriterionIds.length
     ? await supabase
         .from("ahp_alternative_scores")
@@ -106,7 +109,7 @@ export default async function ModelRunPage({
     content = (
       <Blocked title="Complete as fichas de avaliação antes de gerar o resultado">
         <p className="text-sm text-text-muted">
-          Alternativas sem ficha completa entrariam no ranking com nota zero, e a execução {billing.mode === "plan" ? "conta como uma simulação do seu plano" : "consome crédito"}.
+          Alternativas sem ficha completa entrariam no ranking com nota zero, e a execução {trial ? "é gratuita" : billing.mode === "plan" ? "conta como uma simulação do seu plano" : "consome crédito"}.
         </p>
         <ul className="flex w-full flex-col divide-y divide-border-subtle text-sm">
           {incomplete.map((alt) => (
@@ -149,7 +152,7 @@ export default async function ModelRunPage({
         <ContactG2a label="Falar com a G2A" subject="Mais simulações / upgrade de plano (AHP)" userEmail={user.userEmail ?? undefined} />
       </Blocked>
     );
-  } else if (billing.mode === "legacy" && creditBalance < RUN_COST_CREDITS) {
+  } else if (billing.mode === "legacy" && !trial && creditBalance < RUN_COST_CREDITS) {
     content = (
       <Blocked title="Você não tem créditos para gerar o resultado">
         <p className="text-sm text-text-muted">
@@ -163,7 +166,12 @@ export default async function ModelRunPage({
       <>
         <p className="flex items-center gap-2 text-sm text-text-muted">
           <Coins className="h-4 w-4 text-gold-600" />
-          {billing.mode === "plan" ? (
+          {trial ? (
+            <>
+              Versão gratuita · <strong className="text-text-primary">rodadas ilimitadas</strong>, só com os parâmetros
+              liberados.
+            </>
+          ) : billing.mode === "plan" ? (
             <>
               Plano {billing.planName} ·{" "}
               <strong className="text-text-primary">
@@ -181,9 +189,11 @@ export default async function ModelRunPage({
           modelId={model.id}
           pillars={pillars}
           usage={
-            billing.mode === "plan"
-              ? { kind: "plan", runsRemaining: billing.runsRemaining }
-              : { kind: "credits", balance: creditBalance }
+            trial
+              ? { kind: "trial" }
+              : billing.mode === "plan"
+                ? { kind: "plan", runsRemaining: billing.runsRemaining }
+                : { kind: "credits", balance: creditBalance }
           }
         />
       </>

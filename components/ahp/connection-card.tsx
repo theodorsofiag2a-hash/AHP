@@ -45,6 +45,7 @@ export function ConnectionCard({
   modelId,
   alternativeId,
   buses,
+  ufFilter,
   autoSubcriteria,
   initialBusId,
   initialPowerMw,
@@ -54,6 +55,8 @@ export function ConnectionCard({
   modelId: string;
   alternativeId: string;
   buses: GridBus[];
+  /** UF do município do projeto; nulo = todos os barramentos. */
+  ufFilter: string | null;
   autoSubcriteria: AutoSubcriterion[];
   initialBusId: string | null;
   initialPowerMw: number | null;
@@ -148,6 +151,11 @@ export function ConnectionCard({
         <div className="grid gap-4 md:grid-cols-[1fr_160px_160px]">
           <div className="relative flex flex-col gap-1.5">
             <Label htmlFor={`${idPrefix}-bus`}>Subestação</Label>
+            {ufFilter && (
+              <p className="text-xs text-text-muted">
+                Barramentos de {ufFilter}, a UF do município do projeto.
+              </p>
+            )}
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-faint" />
               <Input

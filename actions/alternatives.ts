@@ -91,7 +91,7 @@ export async function saveEvaluation(
 
   const { data: subcriteria, error: subError } = await supabase
     .from("ahp_subcriteria")
-    .select("id, pillar_id")
+    .select("id, pillar_id, auto_source")
     .in("id", subcriterionIds);
   if (subError) throw new Error(subError.message);
 
@@ -113,7 +113,14 @@ export async function saveEvaluation(
 
   const fulfillmentByScaleId = new Map((scales ?? []).map((s) => [s.id, Number(s.fulfillment_pct)]));
 
-  const rows = Object.entries(data).map(([subcriterionId, scaleId]) => ({
+  // O rito de licenciamento só muda pelo município (automático) ou pelo ajuste manual com justificativa.
+  const licensingIds = new Set(
+    (subcriteria ?? []).filter((s) => s.auto_source === "licensing").map((s) => s.id)
+  );
+
+  const rows = Object.entries(data)
+    .filter(([subcriterionId]) => !licensingIds.has(subcriterionId))
+    .map(([subcriterionId, scaleId]) => ({
     alternative_id: alternativeId,
     subcriterion_id: subcriterionId,
     scale_id: scaleId,
@@ -222,6 +229,73 @@ export async function saveConnection(
   if (error?.code === "23503") throw new Error("Barramento não encontrado.");
   if (error) throw new Error(error.message);
   if (!updated || updated.length === 0) throw new Error("Alternativa não encontrada.");
+
+  revalidatePath(`/models/${modelId}/alternatives/${alternativeId}`);
+  revalidatePath(`/models/${modelId}/alternatives`);
+}
+
+const overrideSchema = z.object({
+  subcriterionId: z.string().uuid(),
+  scaleId: z.string().uuid(),
+  reason: z.string().trim().min(5, "Explique o motivo do ajuste (mínimo 5 caracteres).").max(1000),
+});
+
+/**
+ * Ajuste manual do rito de licenciamento (preenchido pela UF). Exige justificativa e registra
+ * quem ajustou e quando.
+ */
+export async function saveLicensingOverride(
+  modelId: string,
+  alternativeId: string,
+  input: { subcriterionId: string; scaleId: string; reason: string }
+) {
+  const supabase = await createClient();
+  const data = overrideSchema.parse(input);
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Sessão expirada. Entre novamente.");
+
+  const { data: alternative } = await supabase
+    .from("ahp_alternatives")
+    .select("id")
+    .eq("id", alternativeId)
+    .eq("model_id", modelId)
+    .maybeSingle();
+  if (!alternative) throw new Error("Alternativa não encontrada.");
+
+  const { data: scale } = await supabase
+    .from("ahp_scales")
+    .select("id, fulfillment_pct, subcriterion_id, ahp_subcriteria!inner(auto_source, score_mode, pillar_id, ahp_pillars!inner(model_id))")
+    .eq("id", data.scaleId)
+    .maybeSingle();
+  const sub = scale ? (Array.isArray(scale.ahp_subcriteria) ? scale.ahp_subcriteria[0] : scale.ahp_subcriteria) : null;
+  const pillar = sub ? (Array.isArray(sub.ahp_pillars) ? sub.ahp_pillars[0] : sub.ahp_pillars) : null;
+  if (
+    !scale ||
+    scale.subcriterion_id !== data.subcriterionId ||
+    sub?.auto_source !== "licensing" ||
+    sub?.score_mode === "screening" ||
+    pillar?.model_id !== modelId
+  ) {
+    throw new Error("Seleção inválida: esta escala não é do rito de licenciamento deste modelo.");
+  }
+
+  const { error } = await supabase.from("ahp_alternative_scores").upsert(
+    {
+      alternative_id: alternativeId,
+      subcriterion_id: data.subcriterionId,
+      scale_id: data.scaleId,
+      score_value: Number(scale.fulfillment_pct),
+      override_reason: data.reason,
+      overridden_by: user.id,
+      overridden_by_email: user.email ?? null,
+      overridden_at: new Date().toISOString(),
+    },
+    { onConflict: "alternative_id,subcriterion_id" }
+  );
+  if (error) throw new Error(error.message);
 
   revalidatePath(`/models/${modelId}/alternatives/${alternativeId}`);
   revalidatePath(`/models/${modelId}/alternatives`);

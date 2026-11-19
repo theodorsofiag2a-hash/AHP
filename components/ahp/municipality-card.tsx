@@ -55,6 +55,7 @@ export function MunicipalityCard({
       try {
         const result = await setAlternativeMunicipality(modelId, alternativeId, next);
         if (result.applied) toast.success("Descargas atmosféricas preenchidas pelo município.");
+        if (result.licensingApplied) toast.success("Licenciamento preenchido pela UF do município.");
         router.refresh();
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "Não foi possível salvar o município.");
@@ -103,7 +104,7 @@ export function MunicipalityCard({
             ? `Ng deste município: ${selected.ng} raios/km²/ano. O parâmetro de descargas atmosféricas é preenchido por ele.`
             : selected
               ? "O Ng deste município ainda não foi carregado. Escolha a faixa de descargas atmosféricas na ficha."
-              : "Usado para preencher o parâmetro de descargas atmosféricas (Ng) quando o valor do município estiver carregado."}
+              : "Preenche o parâmetro de descargas atmosféricas (Ng) e a complexidade do licenciamento (pela UF)."}
         </p>
       </CardContent>
     </Card>

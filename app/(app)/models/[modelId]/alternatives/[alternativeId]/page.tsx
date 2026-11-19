@@ -4,7 +4,16 @@ import { ArrowLeft } from "lucide-react";
 import { ContactG2a } from "@/components/layout/contact-g2a";
 import { requireUserContext } from "@/lib/user-context";
 import { createClient } from "@/lib/supabase/server";
-import { EvaluationForm, type ConnectionConfig } from "@/components/ahp/evaluation-form";
+import {
+  EvaluationForm,
+  type ConnectionConfig,
+  type LicensingInfo,
+  type LicensingOverrideInfo,
+} from "@/components/ahp/evaluation-form";
+import { getBillingSummary } from "@/lib/billing/user-plan";
+import { isTrialBilling } from "@/lib/billing/trial";
+import { isLocked, SCREENING } from "@/lib/ahp/scoring";
+import { RITE_LABEL, isProvisionalRite, isRite } from "@/lib/licensing";
 import type { AutoSubcriterion } from "@/lib/grid/auto-fill";
 import { GRID_BUS_COLUMNS, parseAutoField, parseAutoMatch, toGridBus, type GridBusRow } from "@/lib/grid/types";
 import { MunicipalityCard } from "@/components/ahp/municipality-card";
@@ -46,7 +55,7 @@ export default async function AlternativeEvaluationPage({
   const { data: subcriteria } = pillarIds.length
     ? await supabase
         .from("ahp_subcriteria")
-        .select("id, pillar_id, name, sort_order, score_mode, value_unit, auto_source, auto_field")
+        .select("id, pillar_id, name, sort_order, score_mode, value_unit, auto_source, auto_field, trial")
         .in("pillar_id", pillarIds)
         .order("sort_order", { ascending: true })
     : { data: [] };
@@ -61,9 +70,11 @@ export default async function AlternativeEvaluationPage({
         .order("sort_order", { ascending: true })
     : { data: [] };
 
+  const trial = isTrialBilling(await getBillingSummary(user.userId));
+
   const { data: existingScores } = await supabase
     .from("ahp_alternative_scores")
-    .select("subcriterion_id, scale_id")
+    .select("subcriterion_id, scale_id, override_reason, overridden_by_email, overridden_at")
     .eq("alternative_id", alternativeId);
 
   const { data: existingValues } = await supabase
@@ -81,6 +92,9 @@ export default async function AlternativeEvaluationPage({
         name: sub.name,
         relative: sub.score_mode === RELATIVE_LOWER,
         unit: sub.value_unit,
+        screening: sub.score_mode === SCREENING,
+        locked: isLocked(sub, trial),
+        licensing: sub.auto_source === "licensing" && sub.score_mode !== SCREENING,
         scales: (scales ?? [])
           .filter((sc) => sc.subcriterion_id === sub.id)
           .map((sc) => ({
@@ -112,25 +126,9 @@ export default async function AlternativeEvaluationPage({
     });
   }
 
-  let connection: ConnectionConfig | undefined;
-  if (autoSubcriteria.length > 0) {
-    const { data: busRows } = await supabase
-      .from("grid_buses")
-      .select(GRID_BUS_COLUMNS)
-      .order("uf", { ascending: true })
-      .order("name", { ascending: true });
-    connection = {
-      buses: ((busRows ?? []) as GridBusRow[]).map(toGridBus),
-      autoSubcriteria,
-      initialBusId: alternative.bus_id,
-      initialPowerMw: alternative.power_mw != null ? Number(alternative.power_mw) : null,
-      initialMustMw: alternative.must_mw != null ? Number(alternative.must_mw) : null,
-    };
-  }
-
-  // Município só aparece nos modelos que têm algum parâmetro preenchido por ele (hoje, o Ng).
-  const usesMunicipality = (subcriteria ?? []).some((s) => s.auto_source === "ng");
+  // Município só aparece nos modelos que têm algum parâmetro preenchido por ele (Ng e licenciamento).
   let municipalityUf = "";
+  const usesMunicipality = (subcriteria ?? []).some((s) => s.auto_source === "ng" || s.auto_source === "licensing");
   let municipalityNg: number | null = null;
   let municipalityOptions: { ibge_code: number; name: string; ng: number | null }[] = [];
   if (usesMunicipality && alternative.municipality_ibge) {
@@ -144,6 +142,55 @@ export default async function AlternativeEvaluationPage({
       municipalityNg = current.ng === null ? null : Number(current.ng);
       municipalityOptions = await listMunicipalities(current.uf);
     }
+  }
+
+  // Regra de licenciamento da UF do município (rito, órgão, base legal) e ajuste manual já feito.
+  let licensingInfo: LicensingInfo | undefined;
+  if (municipalityUf && (subcriteria ?? []).some((s) => s.auto_source === "licensing")) {
+    const { data: rule } = await supabase
+      .from("licensing_rules")
+      .select("uf, rite, environmental_agency, legal_basis")
+      .eq("uf", municipalityUf)
+      .maybeSingle();
+    const rite = rule && isRite(rule.rite) ? rule.rite : "nao_informado";
+    licensingInfo = {
+      uf: municipalityUf,
+      riteLabel: RITE_LABEL[rite],
+      provisional: isProvisionalRite(rite),
+      agency: rule?.environmental_agency ?? null,
+      legalBasis: rule?.legal_basis ?? null,
+    };
+  }
+  const licensingSubIds = new Set(
+    (subcriteria ?? []).filter((s) => s.auto_source === "licensing" && s.score_mode !== SCREENING).map((s) => s.id)
+  );
+  const overrideRow = (existingScores ?? []).find((s) => licensingSubIds.has(s.subcriterion_id) && s.override_reason);
+  const licensingOverride: LicensingOverrideInfo | null = overrideRow
+    ? {
+        reason: overrideRow.override_reason as string,
+        byEmail: overrideRow.overridden_by_email,
+        at: overrideRow.overridden_at as string,
+      }
+    : null;
+
+  let connection: ConnectionConfig | undefined;
+  if (autoSubcriteria.length > 0) {
+    // Com o município escolhido, só os barramentos da UF dele (mais o já vinculado, se for de outra UF).
+    let busQuery = supabase.from("grid_buses").select(GRID_BUS_COLUMNS);
+    if (municipalityUf) {
+      busQuery = alternative.bus_id
+        ? busQuery.or(`uf.eq.${municipalityUf},id.eq.${alternative.bus_id}`)
+        : busQuery.eq("uf", municipalityUf);
+    }
+    const { data: busRows } = await busQuery.order("uf", { ascending: true }).order("name", { ascending: true });
+    connection = {
+      buses: ((busRows ?? []) as GridBusRow[]).map(toGridBus),
+      ufFilter: municipalityUf || null,
+      autoSubcriteria,
+      initialBusId: alternative.bus_id,
+      initialPowerMw: alternative.power_mw != null ? Number(alternative.power_mw) : null,
+      initialMustMw: alternative.must_mw != null ? Number(alternative.must_mw) : null,
+    };
   }
 
   const initialValues = Object.fromEntries(
@@ -173,6 +220,12 @@ export default async function AlternativeEvaluationPage({
         </div>
       ) : (
         <>
+          {trial && (
+            <p className="rounded-md border border-gold-500/30 bg-gold-soft px-3 py-2 text-sm text-gold-700">
+              Versão gratuita: rodadas ilimitadas, só com os parâmetros liberados. Os demais aparecem borrados e ficam
+              disponíveis nos planos pagos.
+            </p>
+          )}
           {usesMunicipality && (
             <MunicipalityCard
               modelId={modelId}
@@ -183,13 +236,15 @@ export default async function AlternativeEvaluationPage({
             />
           )}
         <EvaluationForm
-          key={`${alternative.municipality_ibge ?? "sem"}-${municipalityNg ?? "sem-ng"}`}
+          key={`${alternative.municipality_ibge ?? "sem"}-${municipalityNg ?? "sem-ng"}-${licensingOverride?.at ?? "auto"}`}
           modelId={modelId}
           alternativeId={alternativeId}
           pillars={assembledPillars}
           initialSelections={initialSelections}
           initialValues={initialValues}
           connection={connection}
+          licensingInfo={licensingInfo}
+          licensingOverride={licensingOverride}
         />
         </>
       )}

@@ -2,6 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { requireUserContext } from "@/lib/user-context";
+import { getBillingSummary } from "@/lib/billing/user-plan";
+import { isTrialBilling } from "@/lib/billing/trial";
+import { isScoring } from "@/lib/ahp/scoring";
 import { planErrorMessage } from "@/lib/billing/entitlements";
 import { createClient } from "@/lib/supabase/server";
 import { calcularAHPGenerico } from "@/lib/ahp/calculate";
@@ -14,8 +17,9 @@ import type { AhpAlternativeInput, AhpPillarInput } from "@/lib/ahp/types";
 export type ExecuteAhpRunResult = { ok: true; runId: string } | { ok: false; error: string };
 
 export async function executeAhpRun(modelId: string, sliderValues: number[]): Promise<ExecuteAhpRunResult> {
-  await requireUserContext();
+  const user = await requireUserContext();
   const supabase = await createClient();
+  const trial = isTrialBilling(await getBillingSummary(user.userId));
 
   const { data: pillarsRaw } = await supabase
     .from("ahp_pillars")
@@ -31,9 +35,10 @@ export async function executeAhpRun(modelId: string, sliderValues: number[]): Pr
   const pillarIds = pillars.map((p) => p.id);
   const { data: subcriteriaRaw } = await supabase
     .from("ahp_subcriteria")
-    .select("id, pillar_id, name, weight_pct")
+    .select("id, pillar_id, name, weight_pct, score_mode, trial")
     .in("pillar_id", pillarIds);
-  const subcriteria = subcriteriaRaw ?? [];
+  // Triagem não pontua; no trial, só os parâmetros liberados contam (os demais ficam de fora do cálculo).
+  const subcriteria = (subcriteriaRaw ?? []).filter((s) => isScoring(s, trial));
 
   const { data: alternativesRaw } = await supabase
     .from("ahp_alternatives")
